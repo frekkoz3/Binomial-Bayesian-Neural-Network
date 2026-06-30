@@ -10,7 +10,7 @@ from torch import nn
 
 from src.net import *
 
-class MLP(nn.Module):
+class MLP(BaseMLP):
 
     def __init__(self, config: dict | None = None, *args, **kwargs):
         """

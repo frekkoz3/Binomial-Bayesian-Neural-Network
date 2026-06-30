@@ -100,7 +100,7 @@ class GaussianLinear(nn.Module):
 
         return F.linear(x, weight, bias)
 
-class G_MLP(nn.Module):
+class G_MLP(BaseMLP):
     """
         Multi Layer Perceptron (MLP) with Gaussian distribution over the weights.
         Uses reparametrization-trick for backprop.

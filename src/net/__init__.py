@@ -1,3 +1,10 @@
+r"""
+██████  ██████  ██████  ███    ██ 
+     ██ ██   ██      ██ ████   ██ 
+ █████  ██████   █████  ██ ██  ██ 
+██      ██   ██ ██      ██  ██ ██ 
+███████ ██████  ███████ ██   ████                                 
+"""
 from torch import nn
 
 DEFAULT_CONFIG = {
@@ -22,3 +29,11 @@ ACTIVATIONS = {
     "elu": nn.ELU,
     "identity": nn.Identity,
 }
+
+class BaseMLP(nn.Module):
+
+    def forward(self, x):
+        raise NotImplementedError
+    
+    def regularization_loss(self):
+        return 0.0

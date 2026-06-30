@@ -141,7 +141,7 @@ class BinomialGaussianLinear(nn.Module):
 
         return F.linear(x, w, b)
     
-class BGA_MLP(nn.Module):
+class BGA_MLP(BaseMLP):
     """
         Multi Layer Perceptron (MLP) with Binomial distribution over the weights (approximated as Gaussian).
         Uses reparametrization-trick for backprop.
@@ -235,6 +235,6 @@ if __name__ == '__main__':
 
     cfg = {"input_dim" : input_dim, "output_dim" : output_dim, "device" : device}
 
-    model = B_MLP(cfg)
+    model = BGA_MLP(cfg)
 
     print(model(x))
