@@ -13,37 +13,31 @@ from src.net import *
 
 class BinomialGaussianLinear(nn.Module):
     """
-        Binomial linear layer based on the Gaussian approximation of a Binomial
-        distribution.
+        Binomial linear layer using Gaussian approximation of a Binomial distribution.
 
         Each weight is modeled as a learnable Binomial random variable
 
             X ~ Binomial(N, p),
 
-        where the probability parameter is obtained from an unconstrained learnable
-        parameter `rho` through the logistic function
+        where the probability parameter is obtained from an unconstrained learnable  parameter `rho` through the logistic function
 
             p = sigmoid(rho).
 
-        For sufficiently large values of `N`, the Binomial distribution is approximated
-        using its Gaussian approximation
+        For sufficiently large values of `N`, the Binomial distribution is approximated using its Gaussian approximation
 
-            X ≈ Np + sqrt(Np(1-p)) * ε,
-            ε ~ N(0, 1),
+            X ≈ Np + sqrt(Np(1-p)) * eps,
+            eps ~ N(0, 1),
 
-        and the sampled value is discretized using a rounding operation. Since
-        `round()` is not differentiable, the Straight-Through Estimator (STE) is used
-        during backpropagation:
+        and the sampled value is discretized using a rounding operation.
+        Since `round(eps)` is not differentiable, the Straight-Through Estimator (STE) is used during backpropagation:
 
-            x_continuous = Np + sqrt(Np(1-p)) * ε
+            x_continuous = Np + sqrt(Np(1-p)) * eps
             x_round = round(x_continuous)
             x = x_continuous + (x_round - x_continuous).detach()
 
-        This preserves the rounded value during the forward pass while propagating the
-        identity gradient during the backward pass.
+        This preserves the rounded value during the forward pass while propagating the identity gradient during the backward pass.
 
-        The discrete Binomial support {0, ..., N} is then mapped to an arbitrary
-        interval [min, max] through the affine transformation
+        The discrete Binomial support {0, ..., N} is then mapped to an arbitrary interval [min, max] through the affine transformation
 
             w = min + X * (max - min) / N.
 
@@ -59,10 +53,9 @@ class BinomialGaussianLinear(nn.Module):
 
         since a Binomial distribution with parameter `N` has a support of size `N + 1`.
 
-        The learnable parameter `rho` is initialized from a uniform distribution in
-        [0, 1]. An optional bias term can also be included; when enabled, the bias is
-        modeled by an independent Binomial distribution with its own learnable
-        parameters.
+        The learnable parameter `rho` is initialized from a uniform distribution in [0, 1].
+        An optional bias term can also be included; when enabled, the bias is modeled by an independent Binomial distribution
+        with its own learnable parameters.
     """
 
     def __init__(self, in_features, out_features, min_val : int = -5, max_val : int = 5, N : int = 50, bias=True):
@@ -216,7 +209,13 @@ class BGA_MLP(BaseMLP):
             layers.append(ACTIVATIONS[act_name]())
             in_dim = h_dim
 
-        layers.append(nn.Linear(in_dim, cfg["output_dim"]))
+        layers.append(BinomialGaussianLinear(hidden_dims[-1],
+                                             cfg["output_dim"],
+                                             min_val=cfg["min_val"],
+                                             max_val=cfg["max_val"],
+                                             N=cfg["N"],
+                                             bias=cfg["bias"])
+                        )
 
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
@@ -229,7 +228,7 @@ if __name__ == '__main__':
     batch_size = 10
     input_dim = 4
     output_dim = 10
-    device = "cuda"
+    device = "cpu"
 
     x = torch.randn(size=[batch_size, input_dim]).to(device)
 
