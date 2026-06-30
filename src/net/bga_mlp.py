@@ -11,7 +11,7 @@ from torch.nn import functional as F
 
 from src.net import *
 
-class BinomialLinear(nn.Module):
+class BinomialGaussianLinear(nn.Module):
     """
         Binomial linear layer based on the Gaussian approximation of a Binomial
         distribution.
@@ -72,6 +72,8 @@ class BinomialLinear(nn.Module):
         self.max_val = max_val
         self.N = N
 
+        self.avg_inference = False
+
         # Unconstrained parameter -> p = sigma(rho)
         self.weight_rho = nn.Parameter(
             torch.empty(out_features, in_features)
@@ -84,6 +86,9 @@ class BinomialLinear(nn.Module):
 
         self.reset_parameters()
 
+    def _set_avg_inference(self, flag : bool = True):
+        self.avg_inference = flag
+
     def reset_parameters(self):
         nn.init.uniform_(self.weight_rho, -1, 1)
 
@@ -91,8 +96,19 @@ class BinomialLinear(nn.Module):
             nn.init.uniform_(self.bias_rho, -1, 1)
 
     def forward(self, x):
-
         p = torch.sigmoid(self.weight_rho)
+
+        if self.avg_inference:
+            # use model._set_avg_inference(True) to use this modality instead
+            # this modality simply let you use the average output of the distribution as weight
+            # instead of sampling from the actual distribution
+            w = p*self.N
+            if self.bias_rho:
+                p_b = torch.sigmoid(self.bias_rho)
+                b = p_b*self
+            else:
+                b = None
+            return F.Linear(x, w, b)
 
         # Gaussian approximation
         mu = self.N * p
@@ -125,7 +141,7 @@ class BinomialLinear(nn.Module):
 
         return F.linear(x, w, b)
     
-class B_MLP(nn.Module):
+class BGA_MLP(nn.Module):
     """
         Multi Layer Perceptron (MLP) with Binomial distribution over the weights (approximated as Gaussian).
         Uses reparametrization-trick for backprop.
@@ -185,7 +201,7 @@ class B_MLP(nn.Module):
 
         in_dim = cfg["input_dim"]
         for h_dim, act_name in zip(hidden_dims, activations):
-            layers.append(BinomialLinear(
+            layers.append(BinomialGaussianLinear(
                                             in_features=in_dim, 
                                             out_features=h_dim,
                                             min_val=cfg["min_val"],
