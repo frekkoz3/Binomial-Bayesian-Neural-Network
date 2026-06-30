@@ -34,10 +34,10 @@ class GaussianLinear(nn.Module):
         To enable backpropagation through stochastic sampling, the forward pass uses
         the reparameterization trick:
 
-            ε ~ N(0, 1)
-            w = mu + sigma * ε
+            eps ~ N(0, 1)
+            w = mu + sigma * eps
 
-        This separates the stochasticity (ε) from the learnable parameters (mu, rho),
+        This separates the stochasticity (eps) from the learnable parameters (mu, rho),
         allowing gradients to flow through both.
 
         - `mu` is initialized using Kaiming uniform initialization
@@ -99,6 +99,8 @@ class GaussianLinear(nn.Module):
             bias = None
 
         return F.linear(x, weight, bias)
+
+
 
 class G_MLP(BaseMLP):
     """
@@ -172,7 +174,10 @@ class G_MLP(BaseMLP):
 
     def forward(self, x):
         return self.model(x)
-    
+
+
+
+
 if __name__ == '__main__':
 
     batch_size = 10
