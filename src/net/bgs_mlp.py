@@ -90,8 +90,9 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
     Since doing automatic differentiation is impossible in this discrete scenario, we apply here the Gumbel-Softmax (GS)
     reparameterization trick [1][2].
     In its original formalization, GS is intended to be used only for bernoullian and categorical variables.
-    However, being N fixed, we can think to a binomial distribution as a categorical one, thus allowing the use of the GS trick.
-    The bounded values support {0, ..., N} allows also to avoid the generalization of the GS trick as presented by [3].
+    However, recently [3] stated that any discrete distribution with finite support can be approximated by the GS
+    reparameterization trick and to deal our binomial distribution as it was a categorical one.
+    The bounded values support {0, ..., N} allows also to avoid the truncation step as proposed in [3].
 
     The GS trick consists in what follows.
     Suppose to have a categorical distribution W~Cat(1, N), with class probabilities pi = {pi_1, pi_2, ..., pi_N}.
@@ -100,16 +101,28 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
     2. We generate an auxiliar Gumbel(0,1) sample `g_i` as:
         g_i = - log( - log(u_i) )
     3. We apply the softmax function to g:
-        w_i ≈ softmax( (g_i+log(pi_i))/tau  )
+        s_i ≈ softmax( (g_i+log(pi_i))/tau  )
        where `tau` is a temperature parameter representing a trade-off between the quality of the approximation (tau=0)
        and the amount of variance we introduce (tau=infinite leads to a uniform distribution in {0,N}).
        Usually, `tau` is annealed, thus tau(epoch).
+    4. Finally, we remap the resulting value to the original support {0, ..., N} as:
+        w_i = sum_{j=0}^{N} s_i * j
 
-    Notice how, after this scheme, z_i becomes fully differentiable.
-    However, to preserve the binomiality, we apply a round() function to the value.
+    Notice how, after this scheme, w_i becomes fully differentiable.
+    To preserve the binomiality, we apply the straight-through esimator trick, i.e.:
+        w_i = w_i + (round(w_i) - w_i).detach()
+    That applies the discretization step in the forward pass, but allows the gradient to flow through the original `w_i`
+    in the backward pass.
 
-    Finally, the resulting weight is then remapped to the arbitrary interval {min_val, max_val} as explained in the
+    Finally, the resulting weight is remapped to the arbitrary interval {min_val, max_val} as explained in the
     bga_mlp.BinomialGaussianLinear description.
+
+
+    References
+    ----------
+    [1] Jang, E., et al., 2016, "Categorical reparameterization with gumbel-softmax."
+    [2] Maddison, C., et al., 2016,  "The concrete distribution: A continuous relaxation of discrete random variables."
+    [3] Joo, W., et al., 2025, "Generalized Gumbel-Softmax gradient estimator for generic discrete random variables."
     """
 
     def __init__(self,
