@@ -167,7 +167,7 @@ class G_MLP(BaseMLP):
             layers.append(ACTIVATIONS[act_name]())
             in_dim = h_dim
 
-        layers.append(GaussianLinear(hidden_dims[-1], cfg["output_dim"], cfg["bias"]))
+        layers.append(GaussianLinear(in_dim, cfg["output_dim"], bias=cfg["bias"]))
 
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
