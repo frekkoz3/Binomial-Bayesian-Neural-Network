@@ -216,7 +216,14 @@ class BGA_MLP(BaseMLP):
             layers.append(ACTIVATIONS[act_name]())
             in_dim = h_dim
 
-        layers.append(nn.Linear(in_dim, cfg["output_dim"]))
+        layers.append(BinomialGaussianLinear(   
+                                            in_features=in_dim,
+                                            out_features=cfg["output_dim"],
+                                            min_val=cfg["min_val"],
+                                            max_val=cfg["max_val"],
+                                            N=cfg["N"],
+                                            bias=cfg["bias"]
+                                            ))
 
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
