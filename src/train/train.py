@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     # Move everything to config
     cfg = {"model": "BGS_MLP",
-           "dataset": "SinusoidalData",
+           "dataset": "SinusoidData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : output_dim,
@@ -124,12 +124,14 @@ if __name__ == '__main__':
            }
 
     # Get data
-    train_loader, val_loader, _ , _ = eval(cfg["dataset"])(cfg["n_samples"],
-                                                           cfg["train_prop"],
-                                                           cfg["val_prop"],
-                                                           cfg["batch_size"],
-                                                           cfg["input_dim"],
-                                                           cfg["shuffle_data"])
+    dataset_loader = eval(cfg["dataset"])(cfg["n_samples"],
+                                          cfg["train_prop"],
+                                          cfg["val_prop"],
+                                          cfg["batch_size"],
+                                          cfg["input_dim"],
+                                          cfg["shuffle_data"])
+    train_loader, val_loader, test_loader, _ , _, _ = dataset_loader.generate_data()
+
     # Load model
     model = eval(cfg["model"])(cfg)
 
