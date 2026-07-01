@@ -117,7 +117,6 @@ class G_MLP(BaseMLP):
             "hidden_dims": int | list[int] = 128, (if is instance of int, the same dimension will be used across all the layers)
             "bias" : bool = True,
             "activations": str | list["str"] = "relu", (if is instance of str, the same activation will be used across all the layers)
-            "device": str = "cuda" (possible values : "cpu", "cuda", "xpu"),
         """
         super().__init__(*args, **kwargs)
 
@@ -170,7 +169,6 @@ class G_MLP(BaseMLP):
         layers.append(GaussianLinear(in_dim, cfg["output_dim"], bias=cfg["bias"]))
 
         self.model = nn.Sequential(*layers)
-        self.to(cfg["device"])
 
     def forward(self, x):
         return self.model(x)
@@ -187,8 +185,8 @@ if __name__ == '__main__':
 
     x = torch.randn(size=[batch_size, input_dim]).to(device)
 
-    cfg = {"input_dim" : input_dim, "output_dim" : output_dim, "device" : device}
+    cfg = {"input_dim" : input_dim, "output_dim" : output_dim}
 
-    model = G_MLP(cfg)
+    model = G_MLP(cfg).to(device)
 
     print(model(x))

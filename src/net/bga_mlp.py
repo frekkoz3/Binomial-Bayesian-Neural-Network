@@ -53,17 +53,21 @@ class BinomialGaussianLinear(nn.Module):
 
         since a Binomial distribution with parameter `N` has a support of size `N + 1`.
 
-        The learnable parameter `rho` is initialized from a uniform distribution in [0, 1].
+        The learnable parameter `rho` is initialized from a gaussian with mean 0 and variance 1 (which contains mostly values in the range [-2.5, 2.5]).
         An optional bias term can also be included; when enabled, the bias is modeled by an independent Binomial distribution
         with its own learnable parameters.
     """
 
-    def __init__(self, in_features, out_features, min_val : int = -5, max_val : int = 5, N : int = 50, bias=True):
+    def __init__(self, in_features, out_features, min_val : int = -5, max_val : int = 5, N : int = 50, bias=True, resolution : int = 8):
+        """
+            Notes : resolution parameters is related to the number of bit to use for storing the p parameters.
+        """
         super().__init__()
 
         self.min_val = min_val
         self.max_val = max_val
         self.N = N
+        self.resolution = resolution
 
         self.avg_inference = False
 
@@ -79,14 +83,28 @@ class BinomialGaussianLinear(nn.Module):
 
         self.reset_parameters()
 
+    def get_extra_state(self):
+        return {
+            "min_val" : self.min_val,
+            "max_val" : self.max_val,
+            "N" : self.N,
+            "resolution" : self.resolution
+        }
+    
+    def set_extra_state(self, state):
+        self.min_val = state["min_val"]
+        self.max_val = state["max_val"]
+        self.N = state["N"]
+        self.resolution = state["resolution"]
+
     def _set_avg_inference(self, flag : bool = True):
         self.avg_inference = flag
 
     def reset_parameters(self):
-        nn.init.uniform_(self.weight_rho, -1, 1)
+        nn.init.normal(self.weight_rho)
 
         if self.bias_rho is not None:
-            nn.init.uniform_(self.bias_rho, -1, 1)
+            nn.init.normal(self.bias_rho)
 
     def forward(self, x):
         p = torch.sigmoid(self.weight_rho)
@@ -134,6 +152,9 @@ class BinomialGaussianLinear(nn.Module):
 
         return F.linear(x, w, b)
     
+    def _get_state_for_saving(self):
+        pass
+    
 class BGA_MLP(BaseMLP):
     """
         Multi Layer Perceptron (MLP) with Binomial distribution over the weights (approximated as Gaussian).
@@ -152,7 +173,6 @@ class BGA_MLP(BaseMLP):
             "max_val" : int = 5,
             "N" : int = 50,
             "activations": str | list["str"] = "relu", (if is instance of str, the same activation will be used across all the layers)
-            "device": str = "cuda" (possible values : "cpu", "cuda", "xpu"),
         """
         super().__init__(*args, **kwargs)
 
@@ -218,7 +238,6 @@ class BGA_MLP(BaseMLP):
                         )
 
         self.model = nn.Sequential(*layers)
-        self.to(cfg["device"])
 
     def forward(self, x):
         return self.model(x)
@@ -232,8 +251,8 @@ if __name__ == '__main__':
 
     x = torch.randn(size=[batch_size, input_dim]).to(device)
 
-    cfg = {"input_dim" : input_dim, "output_dim" : output_dim, "device" : device}
+    cfg = {"input_dim" : input_dim, "output_dim" : output_dim}
 
-    model = BGA_MLP(cfg)
+    model = BGA_MLP(cfg).to(device)
 
     print(model(x))
