@@ -271,7 +271,8 @@ $$
 $$
 
 That is, our initialization scheme works properly only if the number of neurons in a layer scales proportionally with the input size.  
-In deep networks, this becomes simply untractable.
+In deep networks, this becomes simply untractable.  
+Moreover, if we set $D > N$, the scheme returns a negative variance, which is impossible: networks *cannot* shrink.
 
 We actually reasoned a lot on this aspect. 
 We suppose that the computation breaks when we introduce the approximation by using the Delta method, that is, the only approximation we have done during the whole derivation.  
