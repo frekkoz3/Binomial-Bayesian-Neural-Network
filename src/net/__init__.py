@@ -11,7 +11,7 @@ DEFAULT_CONFIG = {
         "input_dim": None,
         "output_dim": None,
         "n_hidden_layer": 3,
-        "hidden_dims": 128,
+        "hidden_dims": 100,
         "bias": True,
         "min_val" : -1,
         "max_val" : 1,

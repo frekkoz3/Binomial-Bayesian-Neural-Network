@@ -119,10 +119,10 @@ class BinomialGaussianLinear(nn.Module):
         self.saving_mode = mode
 
     def reset_parameters(self, d : int | None = None):
-        nn.init.normal_(self.weight_rho)
+        nn.init.normal_(self.weight_rho, std=0.3)
 
         if self.bias_rho is not None:
-            nn.init.normal_(self.bias_rho)
+            nn.init.normal_(self.bias_rho, std = 0.3)
 
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
@@ -361,7 +361,7 @@ if __name__ == '__main__':
 
     # Parameters
     batch_size = 1
-    input_dim = 2
+    input_dim = 3
     output_dim = 1
     device = "cpu"
 
