@@ -83,7 +83,7 @@ if __name__ == '__main__':
     batch_size = 1
     input_dim = 2
     output_dim = 1
-    device = "cuda"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     x = torch.randn(size=[batch_size, input_dim]).to(device)
 
