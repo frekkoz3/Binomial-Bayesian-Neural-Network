@@ -8,9 +8,16 @@
 Just a bunch of useful simple and useful datasets
 """
 
+import os
+
+import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
+from ucimlrepo import fetch_ucirepo
+
+_UCI_CACHE_DIR = os.path.join(os.path.dirname(__file__), "_uci_cache")
 
 class Dataset:
     """Generic Dataset function"""
@@ -70,5 +77,65 @@ class SinusoidData(Dataset):
         return y
 
 
+class UCIRegressionDataset(Dataset):
+    """
+    Loader for the UCI regression benchmark suite
+    """
+
+    def __init__(self,
+                 uci_id: int,
+                 train_prop: float = 0.8,
+                 val_prop: float = 0.1,
+                 batch_size: int = 32,
+                 shuffle: bool = True,
+                 seed: int = 0,
+                 target_index: int = 0):
+        
+
+        os.makedirs(_UCI_CACHE_DIR, exist_ok=True)
+        cache = os.path.join(_UCI_CACHE_DIR, f"uci_{uci_id}.pkl")
+        if os.path.exists(cache):
+            features, targets = pd.read_pickle(cache)
+        else:
+            data = fetch_ucirepo(id=uci_id).data
+            features, targets = data.features, data.targets
+            pd.to_pickle((features, targets), cache)
+
+        X = torch.tensor(features.to_numpy(dtype=np.float32))
+        y = torch.tensor(targets.iloc[:, target_index].to_numpy(dtype=np.float32)).unsqueeze(1)
+
+        super().__init__(len(X), train_prop, val_prop, batch_size, X.shape[1], shuffle)
+        self.output_dim = y.shape[1]
+
+        perm = np.random.default_rng(seed).permutation(self.n_samples)
+        train_idx = perm[:self.train_size]
+        val_idx = perm[self.train_size:self.train_size + self.val_size]
+        test_idx = perm[self.train_size + self.val_size:]
+
+        self.train_data = TensorDataset(X[train_idx], y[train_idx])
+        self.val_data = TensorDataset(X[val_idx], y[val_idx])
+        self.test_data = TensorDataset(X[test_idx], y[test_idx])
+
+    def generate_data(self):
+        train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        val_loader = DataLoader(self.val_data, batch_size=self.batch_size, shuffle=False)
+        test_loader = DataLoader(self.test_data, batch_size=self.batch_size, shuffle=False)
+        return train_loader, val_loader, test_loader
 
 
+UCI_DATASETS = {
+    "concrete": 165,       # Concrete Compressive Strength   1030 x 8
+    "energy": 242,         # Energy Efficiency                768 x 8  (targets Y1, Y2)
+    "power_plant": 294,    # Combined Cycle Power Plant       9568 x 4
+    "wine_quality": 186,   # Wine Quality (red+white merged)  6497 x 11
+    "airfoil": 291,        # Airfoil Self-Noise               1503 x 5
+    "auto_mpg": 9,         # Auto MPG                          398 x 7
+}
+
+if __name__ == "__main__":
+    for name, uci_id in UCI_DATASETS.items():
+        ds = UCIRegressionDataset(uci_id, batch_size=64)
+        xb, yb = next(iter(ds.generate_data()[0]))
+        print(f"{name:12s} in={ds.input_dim} out={ds.output_dim} "
+              f"train/val/test={len(ds.train_data)}/{len(ds.val_data)}/{len(ds.test_data)} "
+              f"batch_x={tuple(xb.shape)}")
