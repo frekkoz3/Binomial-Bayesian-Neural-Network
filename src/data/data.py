@@ -23,9 +23,9 @@ class Dataset:
                  shuffle
                  ):
         self.n_samples = n_samples
-        self.train_size = train_prop * n_samples
-        self.val_size = val_prop * n_samples
-        self.test_size = (1.-train_prop-val_prop) * n_samples
+        self.train_size = int(train_prop * n_samples)
+        self.val_size = int(val_prop * n_samples)
+        self.test_size = n_samples - self.train_size - self.val_size
         self.batch_size = batch_size
         self.input_dim = input_dim
         self.shuffle = shuffle
@@ -41,11 +41,12 @@ class Dataset:
 
         dataset = TensorDataset(x, y)
 
-        train_data, val_data = random_split(dataset, [self.train_size, self.val_size, self.test_size])
+        train_data, val_data, test_data = random_split(dataset, [self.train_size, self.val_size, self.test_size])
         train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=self.shuffle)
         val_loader = DataLoader(val_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=self.shuffle) if self.test_size > 0 else None
 
-        return train_loader, val_loader, train_data, val_data
+        return train_loader, val_loader, test_loader, train_data, val_data, test_data
 
 
 
@@ -66,6 +67,7 @@ class SinusoidData(Dataset):
 
     def _function(self, x):
         y = torch.sin(x) + 0.5 * torch.sin(2 * x) + 0.25 * x **2
+        return y
 
 
 
