@@ -24,9 +24,9 @@ class MLP(BaseMLP):
         """
         super().__init__(*args, **kwargs)
 
-        cfg = self.DEFAULT_CONFIG.copy()
+        cfg = DEFAULT_CONFIG.copy()
         if config is not None:
-            cfg.update(config) #Mergin 
+            cfg.update(config) # Merging
 
         # Required parameters
         if cfg["input_dim"] is None:
@@ -64,10 +64,10 @@ class MLP(BaseMLP):
         for h_dim, act_name in zip(hidden_dims, activations):
             layers.append(nn.Linear(in_dim, h_dim))
 
-            if act_name not in self.ACTIVATIONS:
+            if act_name not in ACTIVATIONS:
                 raise ValueError(f"Unknown activation '{act_name}'.")
 
-            layers.append(self.ACTIVATIONS[act_name]())
+            layers.append(ACTIVATIONS[act_name]())
             in_dim = h_dim
 
         layers.append(nn.Linear(in_dim, cfg["output_dim"]))
@@ -80,9 +80,9 @@ class MLP(BaseMLP):
 
 if __name__ == '__main__':
 
-    batch_size = 10
-    input_dim = 4
-    output_dim = 10
+    batch_size = 1
+    input_dim = 2
+    output_dim = 1
     device = "cuda"
 
     x = torch.randn(size=[batch_size, input_dim]).to(device)

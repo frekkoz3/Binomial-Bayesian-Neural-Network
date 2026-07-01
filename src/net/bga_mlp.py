@@ -9,13 +9,19 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from enum import Enum
+
 from src.net import *
+
+class Mode(Enum):
+    TRAIN = "train"
+    INFERENCE = "inference"
 
 class BinomialGaussianLinear(nn.Module):
     """
         Binomial linear layer using Gaussian approximation of a Binomial distribution.
 
-        Each weight is modeled as a learnable Binomial random variable
+        Each weight is modeled as an affine transformation of a learnable Binomial random variable
 
             X ~ Binomial(N, p),
 
@@ -69,7 +75,7 @@ class BinomialGaussianLinear(nn.Module):
         self.N = N
         self.resolution = resolution
 
-        self.avg_inference = False
+        self.avg_inference = False # the behavior of the inference change based on this.
 
         # Unconstrained parameter -> p = sigma(rho)
         self.weight_rho = nn.Parameter(
@@ -80,6 +86,10 @@ class BinomialGaussianLinear(nn.Module):
             self.bias_rho = nn.Parameter(torch.empty(out_features))
         else:
             self.register_parameter("bias_rho", None)
+
+        self.mode = "train"  # or "inference"
+        self.register_buffer("weight_p", None)
+        self.register_buffer("bias_p", None)
 
         self.reset_parameters()
 
@@ -100,43 +110,52 @@ class BinomialGaussianLinear(nn.Module):
     def _set_avg_inference(self, flag : bool = True):
         self.avg_inference = flag
 
-    def reset_parameters(self):
-        nn.init.normal(self.weight_rho)
+    def _set_saving_mode(self, mode : Mode = Mode.TRAIN):
+        """
+            This function set the saving (and loading) mode.
+            If the mode is set to "train" the rho tensor will be saved.
+            If instead the mode is set to "inference" the pi tensore will be saved.
+        """
+        self.saving_mode = mode
+
+    def reset_parameters(self, d : int | None = None):
+        nn.init.normal_(self.weight_rho)
 
         if self.bias_rho is not None:
-            nn.init.normal(self.bias_rho)
+            nn.init.normal_(self.bias_rho)
+
+    def _expected_weight(self, p):
+        return self.min_val + p * (self.max_val - self.min_val)
 
     def forward(self, x):
-        p = torch.sigmoid(self.weight_rho)
+        if self.mode == Mode.INFERENCE:
+            p = self.weight_p
+            p_b = self.bias_p if self.bias_rho is not None else None
+        else:
+            p = torch.sigmoid(self.weight_rho)
+            p_b = torch.sigmoid(self.bias_rho) if self.bias_rho is not None else None
 
         if self.avg_inference:
             # use model._set_avg_inference(True) to use this modality instead
             # this modality simply let you use the average output of the distribution as weight
             # instead of sampling from the actual distribution
-            w = p*self.N
-            if self.bias_rho:
-                p_b = torch.sigmoid(self.bias_rho)
-                b = p_b*self
-            else:
-                b = None
-            return F.Linear(x, w, b)
+            w = self._expected_weight(p)
+            b = self._expected_weight(p_b) if p_b is not None else None
 
-        # Gaussian approximation
+            return F.linear(x, w, b)
+
         mu = self.N * p
         sigma = torch.sqrt(self.N * p * (1 - p) + 1e-8)
 
         eps = torch.randn_like(mu)
         w = mu + sigma * eps
 
-        # optional discretization (STE)
         w_round = w.round()
         w = w + (w_round - w).detach()
 
-        # map to [min, max]
         w = self.min_val + (self.max_val - self.min_val) * (w / self.N)
 
-        if self.bias_rho is not None:
-            p_b = torch.sigmoid(self.bias_rho)
+        if p_b is not None:
             mu_b = self.N * p_b
             sigma_b = torch.sqrt(self.N * p_b * (1 - p_b) + 1e-8)
 
@@ -152,8 +171,62 @@ class BinomialGaussianLinear(nn.Module):
 
         return F.linear(x, w, b)
     
-    def _get_state_for_saving(self):
-        pass
+    def export_inference_state(self, quantize=True):
+        with torch.no_grad():
+            p = torch.sigmoid(self.weight_rho)
+
+            if quantize:
+                step = (1<<self.resolution) - 1
+                p = torch.round(p * step) / step
+
+            state = {
+                "min_val": self.min_val,
+                "max_val": self.max_val,
+                "N": self.N,
+                "resolution": self.resolution,
+                "weight_p": p.clone()
+            }
+
+            if self.bias_rho is not None:
+                bp = torch.sigmoid(self.bias_rho)
+                if quantize:
+                    step = (1<<self.resolution) - 1
+                    bp = torch.round(bp * step) / step
+                state["bias_p"] = bp.clone()
+
+            return state
+    
+    def load_inference_state(self, state):
+        self.min_val = state["min_val"]
+        self.max_val = state["max_val"]
+        self.N = state["N"]
+        self.resolution = state["resolution"]
+
+        self.weight_p = state["weight_p"].clone()
+        self.register_buffer("weight_p", self.weight_p)
+
+        if "bias_p" in state:
+            self.bias_p = state["bias_p"].clone()
+            self.register_buffer("bias_p", self.bias_p)
+
+        self.mode = "inference"
+
+    def restore_train_mode(self):
+        assert self.mode == Mode.INFERENCE
+
+        eps = 1e-6
+        p = torch.clamp(self.weight_p, eps, 1 - eps)
+
+        self.weight_rho = nn.Parameter(torch.log(p / (1 - p)))
+
+        if self.bias_p is not None:
+            bp = torch.clamp(self.bias_p, eps, 1 - eps)
+            self.bias_rho = nn.Parameter(torch.log(bp / (1 - bp)))
+
+        self.weight_p = None
+        self.bias_p = None
+
+        self.mode =  Mode.TRAIN
     
 class BGA_MLP(BaseMLP):
     """
@@ -237,22 +310,108 @@ class BGA_MLP(BaseMLP):
                                              bias=cfg["bias"])
                         )
 
+        self.avg_inference = False
+
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.model(x)
     
+    def set_mode(self, mode: Mode = Mode.TRAIN):
+        self.mode = mode
+        for layer in self.model:
+            if hasattr(layer, "mode"):
+                layer.mode = mode
+
+    def export_inference_state(self, quantize=True):
+        state = []
+
+        for layer in self.model:
+            if hasattr(layer, "export_inference_state"):
+                state.append(layer.export_inference_state(quantize))
+            else:
+                state.append(None)
+
+        return {
+            "layers": state
+        }
+    
+    def load_inference_state(self, state):
+        for layer, layer_state in zip(self.model, state["layers"]):
+            if layer_state is not None and hasattr(layer, "load_inference_state"):
+                layer.load_inference_state(layer_state)
+
+        self.set_mode(Mode.INFERENCE)
+
+    def restore_train_mode(self):
+        for layer in self.model:
+            if hasattr(layer, "restore_train_mode"):
+                layer.restore_train_mode()
+
+        self.set_mode(Mode.TRAIN)
+
+    def set_avg_inference(self, flag : bool = True):
+        for layer in self.model:
+            if hasattr(layer, "_set_avg_inference"):
+                layer._set_avg_inference(flag)
+        
+        self.avg_inference = flag
+    
 if __name__ == '__main__':
 
-    batch_size = 10
-    input_dim = 4
-    output_dim = 10
+    # Parameters
+    batch_size = 1
+    input_dim = 2
+    output_dim = 1
     device = "cpu"
 
-    x = torch.randn(size=[batch_size, input_dim]).to(device)
+    # Data
+    x = torch.randn(size=[batch_size, input_dim])
 
+    # Config
     cfg = {"input_dim" : input_dim, "output_dim" : output_dim}
 
-    model = BGA_MLP(cfg).to(device)
+    # Normal model
+    model = BGA_MLP(cfg)
 
-    print(model(x))
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+
+    print(f"normal :\n{model(x)}")
+
+    # Saving the model
+    torch.save(model.state_dict(), "models/proof.pkl")
+
+    # Loading the model
+    state = torch.load("models/proof.pkl")
+
+    model.load_state_dict(state)
+
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+
+    print(f"loaded :\n{model(x)}")
+
+    # Setting INFERENCE mode
+    model.set_mode(Mode.INFERENCE)
+
+    # Saving the model in inference mode (quantized to 8 bit)
+    torch.save(model.export_inference_state(), "models/8bit_proof.pkl")
+
+    # Loading the quantized model
+    quant_state = torch.load("models/8bit_proof.pkl")
+
+    model.load_inference_state(quant_state)
+
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+
+    print(f"quantized :\n{model(x)}")
+
+    # Restore train mode (dequantize the model)
+    model.restore_train_mode()
+    
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+
+    print(f"restored normal :\n{model(x)}")
