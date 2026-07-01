@@ -117,7 +117,173 @@ $$
 $$
 
 [4](#joo2025) proved that this approach works for each discrete distribution with finite support, as the binomial.  
-Thus, we can apply the previous scheme in our setup.  
+Thus, we can apply the previous scheme in our setup.
+
+
+
+### Weights Initialization
+The initialization of the weights is a crucial step in the training of neural networks.  
+In our case, we saw that our model suffers from very high instability if weights are initialized too widely, i.e., if the variance of the $\rho$ parameter, $\sigma_\rho^2$, is too wide.
+
+Let's provide a bid of calculus.  
+We suppose the following:
+$$
+  \begin{align}
+    \omega &= v_\min + \frac{(v_\max - v_\min)}{N} \cdot \tilde \omega  \\
+            &:= v_\min + \frac{\Delta}{N} \cdot \tilde \omega  \\
+            &:= v_\min + S \cdot \tilde \omega \\
+    \tilde \omega &\sim \text{Binomial}(N, p) \\ 
+    p &= \text{sigmoid}(\rho) \\
+    \rho &\sim \mathcal{N}(0, \sigma^2_\rho) \\
+    x &\sim \mathcal{N}(0, 1)
+  \end{align}
+$$
+
+where $x$ are our data, and $\omega$ the weights of the network; other parameters, $v_\min, v_\max, N$ are fixed.  
+Suppose also to have a naïve MLP, composed by a single layer with just one neuron $y$, whose activation function is the identity – thus there is no non-linearity.  
+The input dimension is $D$.  
+The results we obtain will be generalizable to any neuron of any layer at any depth $t$; in that case, $D$ will be the dimension of the layer at depth $t-1$.
+Finally, we suppose that weights and data inputs are independent (this is weird but, you know, without independence we can do almost nothing).
+
+The variance of the single neuron will be:
+
+$$
+\begin{align}
+  \mathbb{V}[y] &= \mathbb{V}[\sum_i^D \omega_i x_i] \\ 
+  &= \sum_i^D \mathbb{V}[\omega_i x_i] \\
+  &= D \mathbb{V}[\omega]\mathbb{x} \\ 
+  &= D \mathbb{V}[\omega]
+\end{align}
+$$
+
+We can reason a bit more on $\mathbb{V}[\omega]$.  
+By applying simple calculus, we have the following:
+$$
+\begin{align}
+  \mathbb{E}[\omega] &= \mathbb{E}[v_\min +S \cdot \tilde \omega] \\
+        &= \mathbb{E}[\tilde \omega]S + v_\min \\ 
+  \mathbb{V}[\omega] &= \mathbb{V}[v_\min + S \cdot \tilde \omega] \\ 
+        &= \mathbb{V}[\tilde \omega]S^2
+\end{align}
+$$
+
+Now, let's focus on $\mathbb{E}[\tilde \omega] = N \mathbb{E}[\sigma(\rho)]$.  
+At first, recall that since the sigmoid function $\sigma$ is symmetric under rotations, it holds that:
+
+$$
+  \sigma(-x) = 1 - \sigma(x) 
+$$
+
+and that the gaussian function is an odd function, thus $f(x) = f(-x)$.  
+So:
+
+$$
+\begin{align}
+\mathbb{E}[\sigma(\rho)] &= \int_{-\infty}^{+\infty} \sigma(x) f(x)dx \\
+  &= \int_{+\infty}^{-\infty}\sigma(-x) f(-x) d(-x) \\ 
+  &= \int_{-\infty}^{+\infty} \sigma(-x) f(-x) d(x) \\
+  &= \int_{-\infty}^{+\infty} \big(1-\sigma(x)\big) f(x) d(x) \\
+  &= \int_{-\infty}^{+\infty} f(x) d(x) - \int_{-\infty}^{+\infty} \sigma(x) f(x) d(x) \\
+  &= 1 - \mathbb{E}[\sigma(\rho)] \\ 
+2\mathbb{E}[\sigma(\rho)] &= 1 \\
+\mathbb{E}[\sigma(\rho)] &= 1/2
+\end{align}
+$$
+
+So that, consequently:
+$$
+  \mathbb{E}[\tilde \omega] = N \cdot 1/2 = \frac{N}{2}
+$$
+
+Now consider $\mathbb{V}[\tilde \omega]$. By applying the law of the total variance we get:
+
+$$
+\begin{align}
+  \mathbb{V}[\tilde \omega] &= \mathbb{V}[\mathbb{E}[\tilde \omega | \rho]] + \mathbb{E}[\mathbb{V}[\tilde \omega | \rho]] \\
+  &= \mathbb{V}[N \sigma(\rho)] + \mathbb{E}[N \sigma(\rho)\big(1-\sigma(\rho)\big)] \\
+  &= N^2\mathbb{V}[\sigma(\rho)] + N \mathbb{E}[\sigma(\rho) - \sigma^2(\rho)] \\
+  &= N^2 \big(\mathbb{E}[\sigma^2(\rho)] - \mathbb{E}[\sigma(\rho)]^2 \big) + N \mathbb{E}[\sigma(\rho)] - N \mathbb{E}[\sigma(\rho)^2] \\ 
+  &= N^2 \mathbb{E}[\sigma(\rho)^2] - N^2 \cdot (\frac{1}{2})^2 + N \cdot \frac{1}{2} - N \mathbb{E}[\sigma(\rho)^2] \\
+  &= \mathbb{E}[\sigma(\rho)^2] (N^2 - N) + \frac{N}{2} - \frac{N^2}{4}
+\end{align}
+$$
+
+Let'a call, for the seek of keeping the notation simple, $\mathbb{E}[\sigma(\rho)^2] = m_2$, since it is the second moment of the sigmoid function - which is unknown due to the inner dependency on the gaussian distribution.  
+Moreover, notice that the variance has a linear form, thus we will set $M = N(N-1)$ and $Q = \frac{N}{2} - \frac{N^2}{4}$ following the old reminiscences from lyceums. 
+
+Putting things together, we get that:
+
+$$
+\mathbb{V}[y] = D \cdot S^2 \cdot (M m_2 + Q)
+$$
+
+We want to have a bounded (or we can fix) the variance of the activation to a small constant $\varepsilon$.  
+So:
+
+$$
+\begin{align}
+  \varepsilon &= \mathbb{V}[y] \\
+  &= D \cdot S^2 \cdot (M m_2 + Q) \\
+  m_2 &= \frac{\varepsilon - D \cdot S^2 \cdot Q}{D \cdot S^2 \cdot N} \\
+      &:= Y
+\end{align}
+$$
+
+We want to manipulate this result so to explicit $\sigma^2_\rho$ (do **not** confuse the two sigmas!).
+At first, remember that the derivsative of the sigmoid function is $\sigma'(x) = \frac{\exp(-x)}{(1+\exp(-x))^2}$.
+If $\sigma^2_\rho$ is small enough, close to 0, we can apply the Delta method to the sigmoid function $\sigma(\rho)$:
+
+$$
+\begin{align}
+  \sigma(\rho) &\approx \sigma(0) + \sigma'(0)\rho + \mathcal{o}(\rho^2) \\ 
+  \mathbb{V}[\sigma(\rho)] &\approx \mathbb{V}[\sigma(0) + \sigma'(0) \rho] \\
+              &= \frac{1}{16} \cdot \mathbb{V}[\rho] \\ 
+              &= \frac{1}{16} \sigma^2_\rho \\
+  m_2 - \mathbb{E}[\sigma(\rho)]^2 &= \frac{1}{16} \sigma^2_\rho \\ 
+  m_2 - \frac{1}{4} &= \frac{1}{16} \sigma^2_\rho \\
+  m_2 &= \frac{\sigma^2_\rho + 4}{16}
+\end{align}
+$$
+
+So that
+
+$$
+\begin{align}
+  \frac{\sigma^2_\rho + 4}{16} &= Y \\
+  \sigma^2_\rho &= 16 Y - 4
+\end{align}
+$$
+
+Notably, we need to ensure that the resulting quantity is defined positive ($16Y > 4$).  
+here things start to behave messily. Indeed we get:
+
+$$
+\begin{align}
+  \varepsilon - D \cdot S^2 \cdot Q &> \frac{1}{4} \cdot D \cdot S^2 \cdot M \\
+  4\varepsilon - 4 \cdot D \cdot S^2 \cdot Q &> D \cdot S^2 \cdot M \\
+  D (4 S^2 Q + S^2M) &< 4\varepsilon \\
+  D &< \frac{4\varepsilon}{S^2 (4Q + M)} \\
+  D &< \frac{4\varepsilon}{\frac{\Delta^2}{N^2}(4Q + M)} \\
+  D &< \frac{4\varepsilon}{\frac{\Delta^2}{N^2}(2N - N^2 + N^2 - N)} \\ 
+  D &< \frac{4\varepsilon}{\frac{\Delta^2}{N^2}N} \\
+  D &< \frac{4N \varepsilon}{\Delta^2}
+\end{align}
+$$
+
+That is, our initialization scheme works properly only if the number of neurons in a layer scales proportionally with the input size.  
+In deep networks, this becomes simply untractable.
+
+We actually reasoned a lot on this aspect. 
+We suppose that the computation breaks when we introduce the approximation by using the Delta method, that is, the only approximation we have done during the whole derivation.  
+
+We also thought to use other functions with known second moment like, e.g., the CDF of a gaussian distribution; however, this led us to introduce further approximation and, in practice, the model learning did not shown any benefit. 
+
+By now, our final conclusion is this simple scheme:
+1. Pick small $\sigma^2_\rho$. 
+2. Apply the sigmoid function. 
+3. Hope things work properly :)
+
+
 
 
 
