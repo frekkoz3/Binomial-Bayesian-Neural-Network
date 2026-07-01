@@ -91,13 +91,13 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
     reparameterization trick [1][2].
     In its original formalization, GS is intended to be used only for bernoullian and categorical variables.
     However, recently [3] stated that any discrete distribution with finite support can be approximated by the GS
-    reparameterization trick and to deal our binomial distribution as it was a categorical one.
-    The bounded values support {0, ..., N} allows also to avoid the truncation step as proposed in [3].
+    reparameterization trick and to deal our binomial distribution as it was categorical.
+    The bounded values support {0, ..., N} allows also avoiding the truncation step as proposed in [3].
 
     The GS trick consists in what follows.
     Suppose to have a categorical distribution W~Cat(1, N), with class probabilities pi = {pi_1, pi_2, ..., pi_N}.
     Suppose also that each pi_i is one-hot encoded, so pi_i lies in {0,1}^N.
-    1. We sample a parameter u_i ~ Unifom(0, 1)
+    1. We sample a parameter u_i ~ Uniform(0, 1)
     2. We generate an auxiliar Gumbel(0,1) sample `g_i` as:
         g_i = - log( - log(u_i) )
     3. We apply the softmax function to g:
@@ -109,7 +109,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         w_i = sum_{j=0}^{N} s_i * j
 
     Notice how, after this scheme, w_i becomes fully differentiable.
-    To preserve the binomiality, we apply the straight-through esimator trick, i.e.:
+    To preserve the binomiality, we apply the straight-through estimator trick, i.e.:
         w_i = w_i + (round(w_i) - w_i).detach()
     That applies the discretization step in the forward pass, but allows the gradient to flow through the original `w_i`
     in the backward pass.
@@ -229,13 +229,13 @@ class BGS_MLP(nn.Module):
 
         layers = []
         for hidden_dim, activation in zip(hidden_dims, activations):
-            layers.append(BinomialGumbelSoftmaxLinear(in_features=input_dims,
+            layers.append( BinomialGumbelSoftmaxLinear(in_features=input_dims,
                                                       out_features=hidden_dim,
                                                       min_val=cfg["min_val"],
                                                       max_val=cfg["max_val"],
                                                       N=cfg["N"],
                                                       bias=cfg["bias"],
-                                                      tau_scheduler=cfg["tau_scheduler"]))
+                                                      tau_scheduler=cfg.get("tau_scheduler", None)) )
             layers.append(ACTIVATIONS[activation]())
             input_dims = hidden_dim
 
@@ -245,7 +245,7 @@ class BGS_MLP(nn.Module):
                                                    max_val=cfg["max_val"],
                                                    N=cfg["N"],
                                                    bias=cfg["bias"],
-                                                   tau_scheduler=cfg["tau_scheduler"]) )
+                                                   tau_scheduler=cfg.get("tau_scheduler", None)) )
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
 
