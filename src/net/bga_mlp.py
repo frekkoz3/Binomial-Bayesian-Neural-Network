@@ -8,6 +8,7 @@ r"""
 import torch
 from torch import nn
 from torch.nn import functional as F
+import math
 
 from enum import Enum
 
@@ -16,6 +17,13 @@ from src.net import *
 class Mode(Enum):
     TRAIN = "train"
     INFERENCE = "inference"
+
+def normal_cdf(x, mu : int = 0, sigma : int = 1):
+    z = (x - mu) / sigma
+    return 0.5 * (1 + torch.erf(z / math.sqrt(2)))
+
+def normal_icdf(p):
+    return math.sqrt(2) * torch.erfinv(2*p - 1)
 
 class BinomialGaussianLinear(nn.Module):
     """
@@ -119,10 +127,10 @@ class BinomialGaussianLinear(nn.Module):
         self.saving_mode = mode
 
     def reset_parameters(self, d : int | None = None):
-        nn.init.normal_(self.weight_rho, std=0.3)
+        nn.init.normal_(self.weight_rho, std=1)
 
         if self.bias_rho is not None:
-            nn.init.normal_(self.bias_rho, std = 0.3)
+            nn.init.normal_(self.bias_rho, std = 1)
 
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
@@ -217,11 +225,11 @@ class BinomialGaussianLinear(nn.Module):
         eps = 1e-6
         p = torch.clamp(self.weight_p, eps, 1 - eps)
 
-        self.weight_rho = nn.Parameter(torch.log(p / (1 - p)))
+        self.weight_rho = nn.Parameter(torch.log(p/(1-p)))
 
         if self.bias_p is not None:
             bp = torch.clamp(self.bias_p, eps, 1 - eps)
-            self.bias_rho = nn.Parameter(torch.log(bp / (1 - bp)))
+            self.bias_rho = nn.Parameter(torch.log(bp/(1-bp)))
 
         self.weight_p = None
         self.bias_p = None
@@ -361,7 +369,7 @@ if __name__ == '__main__':
 
     # Parameters
     batch_size = 1
-    input_dim = 3
+    input_dim = 10
     output_dim = 1
     device = "cpu"
 
