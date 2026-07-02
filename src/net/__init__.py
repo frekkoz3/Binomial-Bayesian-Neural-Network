@@ -6,6 +6,8 @@ r"""
 ███████ ██████  ███████ ██   ████                                 
 """
 from torch import nn
+from enum import Enum
+
 
 DEFAULT_CONFIG = {
         "input_dim": None,
@@ -17,7 +19,7 @@ DEFAULT_CONFIG = {
         "max_val" : 1,
         "N" : 50,
         "activations": "relu",
-        "device": "cuda",
+        "device": "cpu",
 }
 
 ACTIVATIONS = {
@@ -29,6 +31,11 @@ ACTIVATIONS = {
     "elu": nn.ELU,
     "identity": nn.Identity,
 }
+
+
+class Mode(Enum):
+    TRAIN = "train"
+    INFERENCE = "inference"
 
 class BaseMLP(nn.Module):
 
