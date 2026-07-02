@@ -10,8 +10,8 @@ from torch import nn
 DEFAULT_CONFIG = {
         "input_dim": None,
         "output_dim": None,
-        "n_hidden_layer": 3,
-        "hidden_dims": 100,
+        "n_hidden_layer": 2,
+        "hidden_dims": [10000, 1],
         "bias": True,
         "min_val" : -1,
         "max_val" : 1,

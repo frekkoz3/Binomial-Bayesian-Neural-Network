@@ -130,10 +130,10 @@ class BinomialGaussianLinear(nn.Module):
         self.saving_mode = mode
 
     def reset_parameters(self, d : int | None = None):
-        nn.init.normal_(self.weight_rho, std=1)
+        nn.init.normal_(self.weight_rho, std=0)
 
         if self.bias_rho is not None:
-            nn.init.normal_(self.bias_rho, std = 1)
+            nn.init.normal_(self.bias_rho, std = 0)
 
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
@@ -386,7 +386,7 @@ if __name__ == '__main__':
     model = BGA_MLP(cfg)
 
     # Avg inference set to true to visualize the model behavior
-    model.set_avg_inference(True)
+    # model.set_avg_inference(True)
 
     print(f"normal :\n{model(x)}")
 
@@ -399,12 +399,12 @@ if __name__ == '__main__':
     model.load_state_dict(state)
 
     # Avg inference set to true to visualize the model behavior
-    model.set_avg_inference(True)
+    # model.set_avg_inference(True)
 
     print(f"loaded :\n{model(x)}")
 
     # Setting INFERENCE mode
-    model.set_mode(Mode.INFERENCE)
+    # model.set_mode(Mode.INFERENCE)
 
     # Saving the model in inference mode (quantized to 8 bit)
     torch.save(model.export_inference_state(), "models/8    bit_proof.pkl")
@@ -423,6 +423,6 @@ if __name__ == '__main__':
     model.restore_train_mode()
     
     # Avg inference set to true to visualize the model behavior
-    model.set_avg_inference(True)
+    # model.set_avg_inference(True)
 
     print(f"restored normal :\n{model(x)}")
