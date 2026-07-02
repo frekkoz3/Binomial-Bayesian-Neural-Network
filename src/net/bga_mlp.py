@@ -10,13 +10,9 @@ from torch import nn
 from torch.nn import functional as F
 import math
 
-from enum import Enum
-
+from net import Mode
 from src.net import *
 
-class Mode(Enum):
-    TRAIN = "train"
-    INFERENCE = "inference"
 
 def normal_cdf(x, mu : int = 0, sigma : int = 1):
     z = (x - mu) / sigma
@@ -72,7 +68,14 @@ class BinomialGaussianLinear(nn.Module):
         with its own learnable parameters.
     """
 
-    def __init__(self, in_features, out_features, min_val : int = -5, max_val : int = 5, N : int = 50, bias=True, resolution : int = 8):
+    def __init__(self,
+                 in_features,
+                 out_features,
+                 min_val : int = -5,
+                 max_val : int = 5,
+                 N : int = 50,
+                 bias=True,
+                 resolution : int = 8):
         """
             Notes : resolution parameters is related to the number of bit to use for storing the p parameters.
         """
@@ -217,7 +220,7 @@ class BinomialGaussianLinear(nn.Module):
             self.bias_p = state["bias_p"].clone()
             self.register_buffer("bias_p", self.bias_p)
 
-        self.mode = "inference"
+        self.mode = Mode.INFERENCE
 
     def restore_train_mode(self):
         assert self.mode == Mode.INFERENCE
@@ -404,7 +407,7 @@ if __name__ == '__main__':
     model.set_mode(Mode.INFERENCE)
 
     # Saving the model in inference mode (quantized to 8 bit)
-    torch.save(model.export_inference_state(), "models/8bit_proof.pkl")
+    torch.save(model.export_inference_state(), "models/8    bit_proof.pkl")
 
     # Loading the quantized model
     quant_state = torch.load("models/8bit_proof.pkl")
