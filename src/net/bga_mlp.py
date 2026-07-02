@@ -10,7 +10,6 @@ from torch import nn
 from torch.nn import functional as F
 import math
 
-from net import Mode
 from src.net import *
 
 
