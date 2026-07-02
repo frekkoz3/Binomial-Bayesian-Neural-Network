@@ -1,22 +1,22 @@
 # Binomial Bayesian Neural Network
 
-This file describes in detail the theory behind our work. 
+This file describes in detail the theory behind our work.
 Most of the details are present in referenced material.
 
+## Contents
 
-### Contents
 <!-- TOC -->
 * [Binomial Bayesian Neural Network](#binomial-bayesian-neural-network)
-    * [Contents](#contents)
-    * [Binomial Weights in Neural Networks](#binomial-weights-in-neural-networks)
-    * [Gaussian Approximation](#gaussian-approximation)
-    * [Gumbel-Softmax Reparameterization Trick](#gumbel-softmax-reparameterization-trick)
-    * [References](#references)
+  * [Contents](#contents)
+  * [Binomial Weights in Neural Networks](#binomial-weights-in-neural-networks)
+  * [Gaussian Approximation](#gaussian-approximation)
+  * [Gumbel-Softmax Reparameterization Trick](#gumbel-softmax-reparameterization-trick)
+  * [Weight Initialization](#weights-initialization)
+* [References](#references)
 <!-- TOC -->
 
+## Binomial Weights in Neural Networks
 
-
-### Binomial Weights in Neural Networks
 The core idea behind our project is to analyze the behaviour of Neural Networks in the case where weights are discrete and evenly spaced among an interval $[v_{min}, v_{max}]$.  
 This approach can be useful in cases where high precision and high throughput are coupled with memory constraints.
 
@@ -28,7 +28,7 @@ $$
 $$
 
 where $N$ is a fixed integer parameter indicating the number of possible weight outcomes, i.e., the support of the binomial distribution $\{0, 1,\dots, N\}$, and $p^{(i)} $ the *learned* probability of success for the $i$-th weight.  
-The "partial" weights are then remapped in the chosen interval by using the standard formula:
+The "partial" weights are then remapped in the chosen interval by using the affine transformation:
 
 $$
   w^{(i)} = v_{min} + \tilde w^{(i)} \cdot \frac{v_{max} - v_{min}}{N}
@@ -40,17 +40,12 @@ $$
     p^{(i)} = \sigma(\rho^{(i)}) = \frac{1}{1 + e^{-\rho^{(i)}}}
 $$
 
-The current setup appears to be a good compromise between the flexibility of the model and the number of learnable parameters, which is kept low.  
-However, it still lacks a crucial aspect: the possibility to compute gradients and perform backpropagation.
-This is a well-known problem for discrete neural networks; in literature several approaches have been followed to 
-partially sacrifice the discreteness of the model but to allow gradients to flow (and thus, to allow the models to be trained by using standard gradient descent methods).  
-We have implemented in our framework two solutions, here presented: the Gaussian approximation and a generalized version of the Gumbel-Softmax reparameterization trick.
+The current setup appears to be a good compromise between the flexibility of the model and the number of learnable parameters, which is kept low. However, it still lacks a crucial aspect: the possibility to compute gradients and perform backpropagation. This is a well-known problem for discrete neural networks; in literature several approaches have been followed to partially sacrifice the discreteness of the model but to allow gradients to flow (and thus, to allow the models to be trained by using standard gradient descent methods). We have implemented in our framework two solutions, here presented: the Gaussian approximation and a generalized version of the Gumbel-Softmax reparameterization trick.
 
-
-### Gaussian Approximation
+## Gaussian Approximation
 
 The Gaussian approximation comes straightforward from the Central Limit Theorem (CLT): for sufficiently large values of $N$ the Binomial distribution $w \sim \text{Binomial}(N, p)$ can be approximated as a gaussian $\mathcal{N}(\mu = Np, \sigma^2 = Np(1-p))$.  
-Thus, we can simply apply the reparameterization trick as presented in [1](#kingma2014):
+Thus, we can simply apply the reparameterization trick as presented in [1](#kinga2014):
 
 $$
   \tilde w \approx Np + \sqrt{Np(1-p)} \cdot \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0,1).
@@ -64,12 +59,12 @@ $$
 
 where $\text{SG}$ is a stop-gradient step that ensures full differentiability: it preserves the rounded value during the forward pass, while propagating the identity gradient during the backward.
 
-After this step, the obtained binomial weight is mapped into its valid interval $[v_{min}, v_{max}]$ using the already presented formula. 
+After this step, the obtained binomial weight is mapped into its valid interval $[v_{min}, v_{max}]$ using the already presented formula.
 
+## Gumbel-Softmax Reparameterization Trick
 
-### Gumbel-Softmax Reparameterization Trick
 The Gumbel-Softmax reparameterization trick (GS) is a well-known technique for training discrete neural networks where weights come from a categorical distribution [2](#jang2016), [3](maddison2016).  
-The idea behind GS is to rewrite the categorical distribution as a Gumbel, and approximate the sampling from the Gumbel, which is usually done with a non-differentiable $\arg \max$ step, by using a differentiable and parametrizable $ \text{ softmax}$ function. 
+The idea behind GS is to rewrite the categorical distribution as a Gumbel, and approximate the sampling from the Gumbel, which is usually done with a non-differentiable $\arg \max$ step, by using a differentiable and parametrizable $ \text{ softmax}$ function.
 
 Suppose to have samples from a categorical distribution
 
@@ -84,24 +79,18 @@ $$
 $$
 
 The reparameterization trick works as follows.
-1. Sample $N+1$ parameters $u_0, \dots, u_N \sim \text{ Uniform}(0, 1) $, one for each value supported by $\text{Cat}$.  
-2. Generate for each $u_i$ an auxiliar sample from a Gumbel distribution, as:
 
-$$
-  g_i = - \log(-\log(u_i)) 
-$$
+1. Sample $N+1$ parameters $u_0, \dots, u_N \sim \text{ Uniform}(0, 1) $, one for each value supported by $\text{Cat}$.
 
-3. Apply the softmax function to $g_i + \log \pi_i$:
-$$
-  s_i = \text{ softmax}(g_i + \log(\pi_i)) = \frac{\exp\big( (g_i + \log \pi_i) / \tau \big)}{\sum_{j=0}^N \exp\big((g_j + \log \pi_j)/\tau\big)}
-$$
+2. Generate for each $u_i$ an auxiliar sample from a Gumbel distribution, as:$$g_i = - \log(-\log(u_i))$$
+
+3. Apply the softmax function to $g_i + \log \pi_i$:$$
+    s_i = \text{ softmax}(g_i + \log(\pi_i)) = \frac{\exp\big( (g_i + \log \pi_i) / \tau \big)}{\sum_{j=0}^N \exp\big((g_j + \log \pi_j)/\tau\big)}$$
   where $\tau$ is the temperature parameter that, in practice, is annealed during learning.  
-  When $\tau$ is small enough, the target one-hot $c_i$ is recovered; conversely, for $\tau \rightarrow \infty$ the distribution tends to a discrete uniform over the same support $\{ 0, \dots, N \}$.  
-4. When dealing with neural network weights, we need to remap the obtained vector to a single scalar $\tilde w_j$, so that it now belongs to the interval defined by the extremes of the categorical distribution $ [0, N] $:
+  When $\tau$ is small enough, the target one-hot $c_i$ is recovered; conversely, for $\tau \rightarrow \infty$ the distribution tends to a discrete uniform over the same support $\{ 0, \dots, N \}$.
 
-$$
-  \tilde w_j \approx \sum_{i=0}^N s_i \cdot i
-$$
+4. When dealing with neural network weights, we need to remap the obtained vector to a single scalar $\tilde w_j$, so that it now belongs to the interval defined by the extremes of the categorical distribution $ [0, N] $:$$
+  \tilde w_j \approx \sum_{i=0}^N s_i \cdot i$$
 
 The approximation, actually, arises from the softmax step, which approximates the discrete probability by smoothing it in the continuous space.  
 Notice how, after this scheme, the distribution becomes fully differentiable.
@@ -119,39 +108,36 @@ $$
 [4](#joo2025) proved that this approach works for each discrete distribution with finite support, as the binomial.  
 Thus, we can apply the previous scheme in our setup.
 
+## Weights Initialization
 
-
-### Weights Initialization
 The initialization of the weights is a crucial step in the training of neural networks.  
 In our case, we saw that our model suffers from very high instability if weights are initialized too widely, i.e., if the variance of the $\rho$ parameter, $\sigma_\rho^2$, is too wide.
 
-Let's provide a bid of calculus.  
+Let's provide a bit of calculus.  
 We suppose the following:
+
 $$
   \begin{align}
-    \omega &= v_\min + \frac{(v_\max - v_\min)}{N} \cdot \tilde \omega  \\
-            &:= v_\min + \frac{\Delta}{N} \cdot \tilde \omega  \\
-            &:= v_\min + S \cdot \tilde \omega \\
-    \tilde \omega &\sim \text{Binomial}(N, p) \\ 
+    \omega &= v_{min} + \frac{(v_{max} - v_{min})}{N} \cdot \tilde \omega  \\
+            &:= v_{min} + \frac{\Delta}{N} \cdot \tilde \omega  \\
+            &:= v_{min} + S \cdot \tilde \omega \\
+    \tilde \omega &\sim \text{Binomial}(N, p) \\
     p &= \text{sigmoid}(\rho) \\
     \rho &\sim \mathcal{N}(0, \sigma^2_\rho) \\
     x &\sim \mathcal{N}(0, 1)
   \end{align}
 $$
 
-where $x$ are our data, and $\omega$ the weights of the network; other parameters, $v_\min, v_\max, N$ are fixed.  
-Suppose also to have a naïve MLP, composed by a single layer with just one neuron $y$, whose activation function is the identity – thus there is no non-linearity.  
-The input dimension is $D$.  
-The results we obtain will be generalizable to any neuron of any layer at any depth $t$; in that case, $D$ will be the dimension of the layer at depth $t-1$.
-Finally, we suppose that weights and data inputs are independent (this is weird but, you know, without independence we can do almost nothing).
+where $x$ are our data, and $\omega$ the weights of the network; other parameters, $v_{min}, v_{max}, N$ are fixed.  
+Suppose also to have a naïve MLP, composed by a single layer with just one neuron $y$, whose activation function is the identity, thus there is no non-linearity (applying a ReLU should just halves the variance). The input dimension is $D$. The results we obtain will be generalizable to any neuron of any layer at any depth $t$; in that case, $D$ will be the dimension of the layer at depth $t-1$. Finally, we suppose that weights and data inputs are independent (this is false as the training goes on but it is considerably true in the beginning).
 
-The variance of the single neuron will be:
+Assuming $\mathbb{x} \sim \mathcal{N}(0, 1)$, the variance of the single neuron will be:
 
 $$
 \begin{align}
-  \mathbb{V}[y] &= \mathbb{V}[\sum_i^D \omega_i x_i] \\ 
+  \mathbb{V}[y] &= \mathbb{V}[\sum_i^D \omega_i x_i] \\
   &= \sum_i^D \mathbb{V}[\omega_i x_i] \\
-  &= D \mathbb{V}[\omega]\mathbb{x} \\ 
+  &= D \mathbb{V}[\omega]\mathbb{V}[\mathbb{x}] \\
   &= D \mathbb{V}[\omega]
 \end{align}
 $$
@@ -160,9 +146,9 @@ We can reason a bit more on $\mathbb{V}[\omega]$.
 By applying simple calculus, we have the following:
 $$
 \begin{align}
-  \mathbb{E}[\omega] &= \mathbb{E}[v_\min +S \cdot \tilde \omega] \\
-        &= \mathbb{E}[\tilde \omega]S + v_\min \\ 
-  \mathbb{V}[\omega] &= \mathbb{V}[v_\min + S \cdot \tilde \omega] \\ 
+  \mathbb{E}[\omega] &= \mathbb{E}[v_{\min} +S \cdot \tilde \omega] \\
+        &= \mathbb{E}[\tilde \omega]S + v_{\min} \\
+  \mathbb{V}[\omega] &= \mathbb{V}[v_{\min} + S \cdot \tilde \omega] \\
         &= \mathbb{V}[\tilde \omega]S^2
 \end{align}
 $$
@@ -208,8 +194,8 @@ $$
 \end{align}
 $$
 
-Let'a call, for the seek of keeping the notation simple, $\mathbb{E}[\sigma(\rho)^2] = m_2$, since it is the second moment of the sigmoid function - which is unknown due to the inner dependency on the gaussian distribution.  
-Moreover, notice that the variance has a linear form, thus we will set $M = N(N-1)$ and $Q = \frac{N}{2} - \frac{N^2}{4}$ following the old reminiscences from lyceums. 
+Let'a call, for the seek of keeping the notation simple, $\mathbb{E}[\sigma(\rho)^2] = m_2$, since it is the second moment of the sigmoid function, which is unknown due to the inner dependency on the gaussian distribution (this is actually called the logistic-normal).  
+Moreover, notice that the variance has a linear form, thus we will set $M = N(N-1)$ and $Q = \frac{N}{2} - \frac{N^2}{4}$ following the old reminiscences from lyceums ($y = mx + q$).
 
 Putting things together, we get that:
 
@@ -229,8 +215,8 @@ $$
 \end{align}
 $$
 
-We want to manipulate this result so to explicit $\sigma^2_\rho$ (do **not** confuse the two sigmas!).
-At first, remember that the derivsative of the sigmoid function is $\sigma'(x) = \frac{\exp(-x)}{(1+\exp(-x))^2}$.
+We want to manipulate this result to explicit $\sigma^2_\rho$ (do **not** confuse the two sigmas!).
+At first, remember that the derivative of the sigmoid function is $\sigma'(x) = \frac{\exp(-x)}{(1+\exp(-x))^2}$.
 If $\sigma^2_\rho$ is small enough, close to 0, we can apply the Delta method to the sigmoid function $\sigma(\rho)$:
 
 $$
@@ -274,25 +260,20 @@ That is, our initialization scheme works properly only if the number of neurons 
 In deep networks, this becomes simply untractable.  
 Moreover, if we set $D > N$, the scheme returns a negative variance, which is impossible: networks *cannot* shrink.
 
-We actually reasoned a lot on this aspect. 
+We actually reasoned a lot on this aspect.
 We suppose that the computation breaks when we introduce the approximation by using the Delta method, that is, the only approximation we have done during the whole derivation.  
 
-We also thought to use other functions with known second moment like, e.g., the CDF of a gaussian distribution; however, this led us to introduce further approximation and, in practice, the model learning did not shown any benefit. 
+We also thought to use other functions with known second moment like, e.g., the CDF of a gaussian distribution; however, this led us to introduce further approximation and, in practice, the model learning did not shown any benefit.
 
 By now, our final conclusion is this simple scheme:
-1. Pick small $\sigma^2_\rho$. 
-2. Apply the sigmoid function. 
+
+1. Pick small $\sigma^2_\rho$.
+2. Apply the sigmoid function.
 3. Hope things work properly :)
 
+## References
 
-
-
-
-### References
-1. <a id="kinga2014"></a> Kingma, D., Welling, M., 2014, "Auto-Encoding Variational Bayes."  
+1. <a id="kinga2014"></a> Kingma, D., Welling, M., 2014, "Auto-Encoding Variational Bayes."
 2. <a id="jang2016"></a> Jang, E., et al., 2016, "Categorical reparameterization with gumbel-softmax."
 3. <a id="maddison2016"></a> Maddison, C., et al., 2016, "The concrete distribution: A continuous relaxation of discrete random variables."
 4. <a id="joo2025"></a> Joo, W., et al., 2025, "Generalized Gumbel-Softmax gradient estimator for generic discrete random variables."
-
-
-
