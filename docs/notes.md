@@ -140,6 +140,8 @@ $$
 $$
 
 where $x$ are our data, and $\omega$ the weights of the network; other parameters, $v_\min, v_\max, N$ are fixed.  
+Furthermore, we consider $v_\max = - v_\min$, i.e., the interval is symmetric around the 0.  
+
 Suppose also to have a naïve MLP, composed by a single layer with just one neuron $y$, whose activation function is the identity – thus there is no non-linearity.  
 The input dimension is $D$.  
 The results we obtain will be generalizable to any neuron of any layer at any depth $t$; in that case, $D$ will be the dimension of the layer at depth $t-1$.
@@ -151,23 +153,34 @@ $$
 \begin{align}
   \mathbb{V}[y] &= \mathbb{V}[\sum_i^D \omega_i x_i] \\ 
   &= \sum_i^D \mathbb{V}[\omega_i x_i] \\
-  &= D \mathbb{V}[\omega]\mathbb{x} \\ 
+  &= D \mathbb{V}[\omega]\mathbb{V}[x] \\ 
   &= D \mathbb{V}[\omega]
 \end{align}
 $$
 
-We can reason a bit more on $\mathbb{V}[\omega]$.  
+The equation above holds because of the symmetry around 0. Indeed:
+$$
+\begin{align}
+  \mathbb{V}[\omega x] &= \mathbb{V}[\omega]\mathbb{V}[x] + \mathbb{V}[\omega](\mathbb{E}[x])^2 + \mathbb{V}[x](\mathbb{E}[\omega]) \\
+                        &= \mathbb{V}[\omega]\mathbb{V}[x] + 0 + \mathbb{E}[\omega] \\
+\end{align}
+$$
 By applying simple calculus, we have the following:
 $$
 \begin{align}
   \mathbb{E}[\omega] &= \mathbb{E}[v_\min +S \cdot \tilde \omega] \\
         &= \mathbb{E}[\tilde \omega]S + v_\min \\ 
+        &= N/2 \cdot (\Delta / N) + v_\min \\
+        &= \Delta / 2 + v_\min \\
+        &= (v_\max - v_\min) / 2 + v_\min \\ 
+        &= (v_\max + v_\max) / 2 - v_\max \\ 
+        &= 0
   \mathbb{V}[\omega] &= \mathbb{V}[v_\min + S \cdot \tilde \omega] \\ 
         &= \mathbb{V}[\tilde \omega]S^2
 \end{align}
 $$
 
-Now, let's focus on $\mathbb{E}[\tilde \omega] = N \mathbb{E}[\sigma(\rho)]$.  
+Now, let's prove that $\mathbb{E}[\tilde \omega] = N \mathbb{E}[\sigma(\rho)] = N/2$.  
 At first, recall that since the sigmoid function $\sigma$ is symmetric under rotations, it holds that:
 
 $$
@@ -224,7 +237,7 @@ $$
 \begin{align}
   \varepsilon &= \mathbb{V}[y] \\
   &= D \cdot S^2 \cdot (M m_2 + Q) \\
-  m_2 &= \frac{\varepsilon - D \cdot S^2 \cdot Q}{D \cdot S^2 \cdot N} \\
+  m_2 &= \frac{\varepsilon - D \cdot S^2 \cdot Q}{D \cdot S^2 \cdot M} \\
       &:= Y
 \end{align}
 $$
@@ -274,15 +287,19 @@ That is, our initialization scheme works properly only if the number of neurons 
 In deep networks, this becomes simply untractable.  
 Moreover, if we set $D > N$, the scheme returns a negative variance, which is impossible: networks *cannot* shrink.
 
-We actually reasoned a lot on this aspect. 
-We suppose that the computation breaks when we introduce the approximation by using the Delta method, that is, the only approximation we have done during the whole derivation.  
+Let's now reason on the same result but from a different perspective.  
+Since all terms are positive, we can just reformulate the inequality as:
 
-We also thought to use other functions with known second moment like, e.g., the CDF of a gaussian distribution; however, this led us to introduce further approximation and, in practice, the model learning did not shown any benefit. 
+$$
+\begin{align}
+    \Delta^2 &< \frac{4N \varepsilon}{D} \\
+    \Delta &< 2\sqrt{\frac{N\varepsilon}{D}}
+\end{align}
+$$
 
-By now, our final conclusion is this simple scheme:
-1. Pick small $\sigma^2_\rho$. 
-2. Apply the sigmoid function. 
-3. Hope things work properly :)
+From this perspective, we are keeping fixed the dimensions of the input and of the layer: what needs to be adapted is the width of the interval, which now needs to be computed layer-wisely.
+
+
 
 
 
