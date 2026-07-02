@@ -142,7 +142,13 @@ $$
 \end{align}
 $$
 
-We can reason a bit more on $\mathbb{V}[\omega]$.  
+The equation above holds because of the symmetry around 0. Indeed:
+$$
+\begin{align}
+  \mathbb{V}[\omega x] &= \mathbb{V}[\omega]\mathbb{V}[x] + \mathbb{V}[\omega](\mathbb{E}[x])^2 + \mathbb{V}[x](\mathbb{E}[\omega]) \\
+                        &= \mathbb{V}[\omega]\mathbb{V}[x] + 0 + \mathbb{E}[\omega] \\
+\end{align}
+$$
 By applying simple calculus, we have the following:
 $$
 \begin{align}
@@ -153,7 +159,7 @@ $$
 \end{align}
 $$
 
-Now, let's focus on $\mathbb{E}[\tilde \omega] = N \mathbb{E}[\sigma(\rho)]$.  
+Now, let's prove that $\mathbb{E}[\tilde \omega] = N \mathbb{E}[\sigma(\rho)] = N/2$.  
 At first, recall that since the sigmoid function $\sigma$ is symmetric under rotations, it holds that:
 
 $$
@@ -210,7 +216,7 @@ $$
 \begin{align}
   \varepsilon &= \mathbb{V}[y] \\
   &= D \cdot S^2 \cdot (M m_2 + Q) \\
-  m_2 &= \frac{\varepsilon - D \cdot S^2 \cdot Q}{D \cdot S^2 \cdot N} \\
+  m_2 &= \frac{\varepsilon - D \cdot S^2 \cdot Q}{D \cdot S^2 \cdot M} \\
       &:= Y
 \end{align}
 $$
@@ -260,16 +266,19 @@ That is, our initialization scheme works properly only if the number of neurons 
 In deep networks, this becomes simply untractable.  
 Moreover, if we set $D > N$, the scheme returns a negative variance, which is impossible: networks *cannot* shrink.
 
-We actually reasoned a lot on this aspect.
-We suppose that the computation breaks when we introduce the approximation by using the Delta method, that is, the only approximation we have done during the whole derivation.  
+Let's now reason on the same result but from a different perspective.  
+Since all terms are positive, we can just reformulate the inequality as:
 
-We also thought to use other functions with known second moment like, e.g., the CDF of a gaussian distribution; however, this led us to introduce further approximation and, in practice, the model learning did not shown any benefit.
+$$
+\begin{align}
+    \Delta^2 &< \frac{4N \varepsilon}{D} \\
+    \Delta &< 2\sqrt{\frac{N\varepsilon}{D}}
+\end{align}
+$$
 
-By now, our final conclusion is this simple scheme:
+From this perspective, we are keeping fixed the dimensions of the input and of the layer: what needs to be adapted is the width of the interval, which now needs to be computed layer-wisely.
 
-1. Pick small $\sigma^2_\rho$.
-2. Apply the sigmoid function.
-3. Hope things work properly :)
+
 
 ## References
 

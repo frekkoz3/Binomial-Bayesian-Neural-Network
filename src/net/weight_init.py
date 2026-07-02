@@ -1,11 +1,10 @@
 import numpy as np
-import math
 
-def compute_weight_init(n, n_i, max_val, min_val):
+def weight_initialization (n, n_i, max_val, min_val):
 
     r = n / 2 - n**2 / 4
     k = (max_val - min_val) / n
-    y = (1-n_i * r * (k ** 2)) / (n_i * (k**2) * n * (n-1))
+    y = (1 - n_i * r * (k ** 2)) / (n_i * (k**2) * n * (n-1))
 
     sigma = 16 * y - 4
 
@@ -20,9 +19,9 @@ if __name__ == "__main__":
     min_val = -2
     max_val = 2
 
-    print(compute_new_weights(n, n_i, max_val, min_val))
+    print(weight_initialization(n, n_i, max_val, min_val))
 
-    sigmas = [[compute_new_weights(n, n_i, max_val, min_val) for n_i in range(10, 100, 5)] for n in range(10, 100, 5)]
+    sigmas = [[weight_initialization(n, n_i, max_val, min_val) for n_i in range(10, 100, 5)] for n in range(10, 100, 5)]
 
     # Plot sigmas
 

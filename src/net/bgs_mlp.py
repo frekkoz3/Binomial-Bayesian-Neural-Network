@@ -5,6 +5,7 @@
 ██      ██   ██ ██      ██  ██ ██
 ███████ ██████  ███████ ██   ████
 """
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -78,6 +79,26 @@ class LinearTauScheduler(TauScheduler):
 
 
 
+class ConstantTauScheduler(TauScheduler):
+    """
+    Constant tau scheduling strategy.
+    tau = tau_0
+    """
+    def __init__(self, tau_0 : float = 1.0):
+        super().__init__()
+        self.tau_0 = tau_0
+
+    @property
+    def tau(self):
+        """Returns the current Tau value"""
+        return self.tau_0
+
+    def step(self):
+        """No-op for constant tau scheduling"""
+        pass
+
+
+
 class BinomialGumbelSoftmaxLinear(nn.Module):
     """
     Binomial linear layer using Gumbel-Softmax approximation of a binomial distribution.
@@ -133,17 +154,26 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
                  N : int = 50,
                  bias : bool = True,
                  tau_scheduler : str | None = None,
-                 tau_parameters : dict | None = None):
+                 tau_parameters : dict | None = None,
+                 resolution : int = 8):
         super().__init__()
 
         self.min_val = min_val
         self.max_val = max_val
         self.N = N
+        self.resolution = resolution
 
-        self.tau_scheduler = eval(tau_scheduler)(**tau_parameters if tau_parameters else {}) if tau_scheduler else 1.
+        self.tau_parameters = tau_parameters
+        self.tau_scheduler = eval(tau_scheduler)(**tau_parameters if tau_parameters else {})
+
+        self.mode = "train" # or "inference"
+        self.avg_inference = False
 
         self.rho = nn.Parameter(torch.empty(out_features, in_features))
         self.bias = nn.Parameter(torch.empty(out_features)) if bias else self.register_parameter("bias", None)
+
+        self.register_buffer("weight_p", None)
+        self.register_buffer("bias_p", None)
 
         self._reset_parameters()
 
@@ -156,14 +186,136 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
             nn.init.uniform_(self.bias, -1, 1)
 
 
+    def _expected_weight(self, p):
+        """Compute the expected weight value given the probability p"""
+        return self.min_val + (self.max_val - self.min_val) * p
+
+
     def _get_tau(self):
         """Get tau value"""
-        return self.tau_scheduler.tau if isinstance(self.tau_scheduler, TauScheduler) else 1
+        return self.tau_scheduler.tau
+
+
+    def get_extra_state(self) -> Any:
+        return {
+            "min_val": self.min_val,
+            "max_val": self.max_val,
+            "N": self.N,
+            "resolution": self.resolution,
+            "tau_scheduler_name": self.tau_scheduler.__class__.__name__,
+            "tau_parameters": self.tau_parameters,
+            "tau_epoch": self.tau_scheduler.epoch
+        }
+
+
+    def set_extra_state(self, state: Any) -> None:
+        self.min_val = state["min_val"]
+        self.max_val = state["max_val"]
+        self.N = state["N"]
+        self.resolution = state["resolution"]
+        self.tau_parameters = state["tau_parameters"]
+
+        scheduler_name = state.get("tau_scheduler_name")
+        if scheduler_name:
+            scheduler_class = globals().get(scheduler_name)
+            self.tau_scheduler = scheduler_class(**self.tau_parameters)
+            self.tau_scheduler.epoch = state.get("tau_epoch", 0)
+        else:
+            self.tau_scheduler = 1.
+
+
+    def set_avg_inference(self, flag : bool = True):
+        """Set the inference mode to average or not"""
+        self.avg_inference = flag
+
+
+    def _set_saving_mode(self, mode : Mode = Mode.TRAIN):
+        """Set the saving mode to save the average or not"""
+        self.saving_mode = mode
+
+
+    def save_inference_state(self, quantize = True):
+        """Save the inference state of the layer"""
+        with torch.no_grad():
+            p = torch.sigmoid(self.rho)
+
+            if quantize:
+                step = (1<<self.resolution) - 1
+                p = torch.round(p * step) / step
+
+            state = {
+                "min_val": self.min_val,
+                "max_val": self.max_val,
+                "N": self.N,
+                "resolution": self.resolution,
+                "weight_p": p.clone(),
+                "tau_scheduler_name": self.tau_scheduler.__class__.__name__,
+                "tau_parameters": self.tau_parameters
+            }
+
+            if self.bias is not None:
+                bp = torch.sigmoid(self.bias)
+                if quantize:
+                    step = (1<<self.resolution) - 1
+                    bp = torch.round(bp * step) / step
+                state["bias_p"] = bp.clone()
+
+            return state
+
+
+    def load_inference_state(self, state):
+        """Load the inference state of the layer"""
+        self.min_val = state["min_val"]
+        self.max_val = state["max_val"]
+        self.N = state["N"]
+        self.resolution = state["resolution"]
+
+        self.weight_p = state["weight_p"].clone()
+        self.register_buffer("weight_p", self.weight_p)
+        self.tau_parameters = state["tau_parameters"]
+
+        scheduler_name = state.get("tau_scheduler_name")
+        if scheduler_name:
+            scheduler_class = globals().get(scheduler_name)
+            self.tau_scheduler = scheduler_class(**self.tau_parameters)
+            self.tau_scheduler.epoch = state.get("tau_epoch", 0)
+
+        if "bias_p" in state:
+            self.bias_p = state["bias_p"].clone()
+            self.register_buffer("bias_p", self.bias_p)
+
+        self.mode = Mode.INFERENCE
+
+
+    def restore_train_mode(self):
+        assert self.mode == Mode.INFERENCE
+
+        eps = 1e-6
+        p = torch.clamp(self.weight_p, eps, 1 - eps)
+
+        self.rho = nn.Parameter(torch.log(p/(1-p)))
+
+        if self.bias_p is not None:
+            bp = torch.clamp(self.bias_p, eps, 1 - eps)
+            self.bias = nn.Parameter(torch.log(bp/(1-bp)))
+
+        self.weight_p = None
+        self.bias_p = None
+
+        self.mode =  Mode.TRAIN
 
 
     def forward_param(self, param):
         """Forward definition for a generic parameter"""
-        p = torch.sigmoid(param)
+        if self.mode == Mode.INFERENCE:
+            p = self.weight_p if param is self.rho else self.bias_p
+        else:
+            p = torch.sigmoid(param)
+
+        if self.avg_inference:
+            param = self._expected_weight(p)
+            return param
+
         tau = self._get_tau()
 
         # Compute the class probabilities for the binomial distribution
@@ -235,7 +387,8 @@ class BGS_MLP(nn.Module):
                                                       max_val=cfg["max_val"],
                                                       N=cfg["N"],
                                                       bias=cfg["bias"],
-                                                      tau_scheduler=cfg.get("tau_scheduler", None)) )
+                                                      tau_scheduler=cfg.get("tau_scheduler", None),
+                                                      tau_parameters=cfg.get("tau_parameters", None)) )
             layers.append(ACTIVATIONS[activation]())
             input_dims = hidden_dim
 
@@ -245,10 +398,63 @@ class BGS_MLP(nn.Module):
                                                    max_val=cfg["max_val"],
                                                    N=cfg["N"],
                                                    bias=cfg["bias"],
-                                                   tau_scheduler=cfg.get("tau_scheduler", None)) )
+                                                   tau_scheduler=cfg.get("tau_scheduler", None),
+                                                   tau_parameters=cfg.get("tau_parameters", None)) )
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
 
+
+        self.avg_inference = False
+        self.mode = Mode.TRAIN
+
+
+    def set_mode(self, mode : Mode = Mode.TRAIN):
+        self.mode = mode
+        for layer in self.model:
+            if hasattr(layer, "mode"):
+                layer.mode = mode
+
+
+    def export_inference_state(self, quantize = True):
+        """Export the inference state of the model"""
+        state = []
+
+        for layer in self.model:
+            if hasattr(layer, "save_inference_state"):
+                state.append(layer.save_inference_state(quantize=quantize))
+            else:
+                state.append(None)
+
+        return {
+            "layers": state,
+        }
+
+
+    def load_inference_state(self, state):
+        """Load the inference state of the model"""
+        for layer, layer_state in zip(self.model, state["layers"]):
+            if hasattr(layer, "load_inference_state") and layer_state is not None:
+                layer.load_inference_state(layer_state)
+
+        self.set_mode(Mode.INFERENCE)
+
+
+    def restore_train_mode(self):
+        """Restore the model to training mode"""
+        for layer in self.model:
+            if hasattr(layer, "restore_train_mode"):
+                layer.restore_train_mode()
+
+        self.set_mode(Mode.TRAIN)
+
+
+    def set_avg_inference(self, flag : bool = True):
+        """Set the inference mode to average or not"""
+        for layer in self.model:
+            if hasattr(layer, "set_avg_inference"):
+                layer.set_avg_inference(flag)
+
+        self.avg_inference = flag
 
     def forward(self, x):
         return self.model(x)
@@ -268,4 +474,43 @@ if __name__ == "__main__":
 
     model = BGS_MLP(cfg)
 
-    print(model(x))
+    # Normal model
+    model = BGS_MLP(cfg)
+
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+
+    print(f"normal :\n{model(x)}")
+
+    # Saving the model
+    torch.save(model.state_dict(), "models/try.pkl")
+
+    # Loading the model
+    state = torch.load("models/try.pkl", weights_only=False)
+    model.load_state_dict(state)
+
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+    print(f"loaded :\n{model(x)}")
+
+    # Setting INFERENCE mode
+    model.set_mode(Mode.INFERENCE)
+
+    # Saving the model in inference mode (quantized to 8 bit)
+    torch.save(model.export_inference_state(), "models/8bit_try.pkl")
+
+    # Loading the quantized model
+    quant_state = torch.load("models/8bit_try.pkl", weights_only=False)
+    model.load_inference_state(quant_state)
+
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+    print(f"quantized :\n{model(x)}")
+
+    # Restore train mode (dequantize the model)
+    model.restore_train_mode()
+
+    # Avg inference set to true to visualize the model behavior
+    model.set_avg_inference(True)
+
+    print(f"restored normal :\n{model(x)}")
