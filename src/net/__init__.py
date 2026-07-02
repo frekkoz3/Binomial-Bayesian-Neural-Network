@@ -32,6 +32,11 @@ ACTIVATIONS = {
     "identity": nn.Identity,
 }
 
+
+class Mode(Enum):
+    TRAIN = "train"
+    INFERENCE = "inference"
+
 class BaseMLP(nn.Module):
 
     def forward(self, x):
