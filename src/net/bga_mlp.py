@@ -10,9 +10,8 @@ from torch import nn
 from torch.nn import functional as F
 import math
 
-from net import Mode
 from src.net import *
-
+from src.net.weight_init import *
 
 def normal_cdf(x, mu : int = 0, sigma : int = 1):
     z = (x - mu) / sigma
@@ -102,7 +101,7 @@ class BinomialGaussianLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
-        self.reset_parameters()
+        self.reset_parameters(d=input_dim)
 
     def get_extra_state(self):
         return {
@@ -130,15 +129,17 @@ class BinomialGaussianLinear(nn.Module):
         self.saving_mode = mode
 
     def reset_parameters(self, d : int | None = None):
-        nn.init.normal_(self.weight_rho, std=0)
+        std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        nn.init.normal_(self.weight_rho, std=std)
 
         if self.bias_rho is not None:
-            nn.init.normal_(self.bias_rho, std = 0)
+            nn.init.normal_(self.bias_rho, std = std)
 
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
 
     def forward(self, x):
+
         if self.mode == Mode.INFERENCE:
             p = self.weight_p
             p_b = self.bias_p if self.bias_rho is not None else None
@@ -297,6 +298,7 @@ class BGA_MLP(BaseMLP):
         layers = []
 
         in_dim = cfg["input_dim"]
+        i = 0
         for h_dim, act_name in zip(hidden_dims, activations):
             layers.append(BinomialGaussianLinear(
                                             in_features=in_dim, 
@@ -304,8 +306,12 @@ class BGA_MLP(BaseMLP):
                                             min_val=cfg["min_val"],
                                             max_val=cfg["max_val"],
                                             N=cfg["N"],
-                                            bias=cfg["bias"])
+                                            bias=cfg["bias"],
+                                            resolution=cfg["resolution"]
                                         )
+                                        )
+            
+            print(f"optimal std for layer {i}: {math.sqrt(weight_initialization(n=cfg["N"], n_i=in_dim, max_val=cfg["max_val"],min_val=cfg["min_val"]))}")
 
             if act_name not in ACTIVATIONS:
                 raise ValueError(f"Unknown activation '{act_name}'.")
@@ -371,7 +377,7 @@ class BGA_MLP(BaseMLP):
 if __name__ == '__main__':
 
     # Parameters
-    batch_size = 1
+    batch_size = 1000
     input_dim = 10
     output_dim = 1
     device = "cpu"
@@ -385,44 +391,7 @@ if __name__ == '__main__':
     # Normal model
     model = BGA_MLP(cfg)
 
-    # Avg inference set to true to visualize the model behavior
-    # model.set_avg_inference(True)
-
-    print(f"normal :\n{model(x)}")
-
-    # Saving the model
-    torch.save(model.state_dict(), "models/proof.pkl")
-
-    # Loading the model
-    state = torch.load("models/proof.pkl")
-
-    model.load_state_dict(state)
-
-    # Avg inference set to true to visualize the model behavior
-    # model.set_avg_inference(True)
-
-    print(f"loaded :\n{model(x)}")
-
-    # Setting INFERENCE mode
-    # model.set_mode(Mode.INFERENCE)
-
-    # Saving the model in inference mode (quantized to 8 bit)
-    torch.save(model.export_inference_state(), "models/8    bit_proof.pkl")
-
-    # Loading the quantized model
-    quant_state = torch.load("models/8bit_proof.pkl")
-
-    model.load_inference_state(quant_state)
-
-    # Avg inference set to true to visualize the model behavior
-    model.set_avg_inference(True)
-
-    print(f"quantized :\n{model(x)}")
-
-    # Restore train mode (dequantize the model)
-    model.restore_train_mode()
+    y = model(x)
     
-    # Avg inference set to true to visualize the model behavior
-    # model.set_avg_inference(True)
-
-    print(f"restored normal :\n{model(x)}")
+    print(torch.mean(y, 0).float())
+    print(torch.var(y, 0).float())
