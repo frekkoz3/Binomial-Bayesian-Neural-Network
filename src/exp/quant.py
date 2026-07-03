@@ -15,10 +15,10 @@ from torch.optim import Adam
 from src.data.data import UCI_DATASETS, UCIRegressionDataset
 from src.net.bga_mlp import BGA_MLP
 from src.train.train import fit
-from src.val.metrics import rmse
+from src.val.metrics import gaussian_nll, rmse
 
 
-def resolution_foreach(model, test_loader, device, bit_widths=(32, 16, 8, 6, 4, 2), metrics={"rmse": rmse}):
+def resolution_foreach(model, test_loader, device, bit_widths=(32, 16, 8, 6, 4, 2), metrics={"rmse": rmse, "nll": gaussian_nll}):
     """
     Evaluate a quantized copy of `model` at each bit-width in `bit_widths`.
     `model` itself (and its full-precision `rho`) is left untouched.
@@ -57,6 +57,6 @@ if __name__ == "__main__":
         epochs=4000,
         device=device)
 
-    print(f"{'bits':>4}  {'rmse':>8}")
+    print(f"{'bits':>4}  {'rmse':>8}  {'nll':>8}")
     for row in resolution_foreach(model, test_loader, device):
-        print(f"{row['bits']:>4}  {row['rmse']:>8.4f}")
+        print(f"{row['bits']:>4}  {row['rmse']:>8.4f}  {row['nll']:>8.4f}")

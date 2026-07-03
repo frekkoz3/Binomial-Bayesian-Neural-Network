@@ -29,3 +29,24 @@ def rmse(model, loader, device="cpu", n_samples=1):
         n += y.numel()
 
     return math.sqrt(squared_error / n)
+
+
+@torch.no_grad()
+def gaussian_nll(model, loader, device="cpu", n_samples=20, min_var=1e-6):
+    """
+    Average negative log-likelihood of the targets under a Normal(mean, var)
+    fit from `n_samples` stochastic forward passes per input.
+    Score predictive uncertainty, not just point accuracy.
+    """
+    model.eval()
+
+    total_nll, n = 0.0, 0
+    for x, y in loader:
+        mean, var = predictive_moments(model, x, n_samples, device)
+        mean, var = mean.cpu(), var.clamp(min=min_var).cpu()
+
+        nll = 0.5 * (torch.log(2 * math.pi * var) + (y - mean) ** 2 / var)
+        total_nll += nll.sum().item()
+        n += y.numel()
+
+    return total_nll / n
