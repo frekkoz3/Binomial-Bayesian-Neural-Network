@@ -458,6 +458,12 @@ class BGS_MLP(nn.Module):
 
         self.avg_inference = flag
 
+    def set_resolution(self, resolution : int):
+        """Set the storage bit-width of `p` on every layer."""
+        for layer in self.model:
+            if hasattr(layer, "resolution"):
+                layer.resolution = resolution
+
     def forward(self, x):
         return self.model(x)
 

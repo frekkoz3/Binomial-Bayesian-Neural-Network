@@ -371,9 +371,15 @@ class BGA_MLP(BaseMLP):
         for layer in self.model:
             if hasattr(layer, "_set_avg_inference"):
                 layer._set_avg_inference(flag)
-        
+
         self.avg_inference = flag
-    
+
+    def set_resolution(self, resolution : int):
+        """Set the storage bit-width of `p` on every layer."""
+        for layer in self.model:
+            if hasattr(layer, "resolution"):
+                layer.resolution = resolution
+
 if __name__ == '__main__':
 
     # Parameters
