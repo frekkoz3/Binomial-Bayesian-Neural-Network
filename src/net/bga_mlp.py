@@ -101,7 +101,7 @@ class BinomialGaussianLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
-        self.reset_parameters(d=input_dim)
+        self.reset_parameters(d=in_features)
 
     def get_extra_state(self):
         return {
