@@ -15,6 +15,7 @@ import math
 import numpy as np
 
 from src.net import *
+from src.net.weight_init import *
 
 
 
@@ -178,12 +179,13 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self._reset_parameters()
 
 
-    def _reset_parameters(self):
+    def _reset_parameters(self, d : int = None):
         """Initialize the learnable parameters"""
-        nn.init.uniform_(self.rho, -1, 1)
+        std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        nn.init.normal_(self.rho, std = std)
 
         if self.bias is not None:
-            nn.init.uniform_(self.bias, -1, 1)
+            nn.init.normal_(self.bias, std = std)
 
 
     def _expected_weight(self, p):
