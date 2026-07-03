@@ -176,7 +176,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
-        self._reset_parameters()
+        self._reset_parameters(d=in_features)
 
 
     def _reset_parameters(self, d : int = None):
@@ -220,7 +220,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         scheduler_name = state.get("tau_scheduler_name")
         if scheduler_name:
             scheduler_class = globals().get(scheduler_name)
-            self.tau_scheduler = scheduler_class(**self.tau_parameters)
+            self.tau_scheduler = scheduler_class(**self.tau_parameters if self.tau_parameters else {})
             self.tau_scheduler.epoch = state.get("tau_epoch", 0)
         else:
             self.tau_scheduler = 1.
@@ -279,7 +279,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         scheduler_name = state.get("tau_scheduler_name")
         if scheduler_name:
             scheduler_class = globals().get(scheduler_name)
-            self.tau_scheduler = scheduler_class(**self.tau_parameters)
+            self.tau_scheduler = scheduler_class(**self.tau_parameters if self.tau_parameters else {})
             self.tau_scheduler.epoch = state.get("tau_epoch", 0)
 
         if "bias_p" in state:
