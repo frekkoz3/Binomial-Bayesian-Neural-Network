@@ -224,11 +224,8 @@ class UCIRegressionDataset(Dataset):
 
         self.x_mean = X[train_idx].mean(0, keepdim=True)
         self.x_std = X[train_idx].std(0, keepdim=True).clamp(min=1e-8)
-        self.y_mean = y[train_idx].mean(0, keepdim=True)
-        self.y_std = y[train_idx].std(0, keepdim=True).clamp(min=1e-8)
 
         X = (X - self.x_mean) / self.x_std
-        y = (y - self.y_mean) / self.y_std
 
         self.train_data = TensorDataset(X[train_idx], y[train_idx])
         self.val_data = TensorDataset(X[val_idx], y[val_idx])
