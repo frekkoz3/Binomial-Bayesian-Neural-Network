@@ -8,8 +8,11 @@ r"""
 import torch
 from torch import nn
 from torch.nn import functional as F
+import math
 
 from src.net import *
+
+LOG_2PI = torch.tensor(math.log(2*math.pi))
 
 class GaussianLinear(nn.Module):
     """
@@ -73,6 +76,10 @@ class GaussianLinear(nn.Module):
             self.register_parameter("bias_rho", None)
 
         self.reset_parameters()
+        self.kl = torch.tensor(0.)
+
+        self.register_buffer("prior_mu", torch.tensor(0.))
+        self.register_buffer("prior_sigma", torch.tensor(1.))
 
     def reset_parameters(self):
         nn.init.kaiming_uniform_(self.weight_mu)
@@ -84,17 +91,37 @@ class GaussianLinear(nn.Module):
             nn.init.zeros_(self.bias_mu)
             nn.init.constant_(self.bias_rho, -5.)
 
+    def _log_prob(self, value, mu, sigma):
+        """if isinstance(mu, float):
+            mu = torch.ones_like(value)*mu
+        if isinstance(sigma, float):
+            sigma = torch.ones_like(value)*sigma"""
+            
+        return (
+            -torch.log(sigma)
+            - 0.5 * torch.log(LOG_2PI)
+            - (value - mu) ** 2 / (2 * sigma ** 2)
+        ).sum()
+
+    def _sample_kl(self, value, mu1, sigma1, mu2, sigma2, direct : bool = True):
+        if direct:
+            return self._log_prob(value, mu1, sigma1) - self._log_prob(value, mu2, sigma2)
+        else:
+            return - self._log_prob(value, mu1, sigma1) + self._log_prob(value, mu2, sigma2)
+
     def forward(self, x):
 
         weight_sigma = F.softplus(self.weight_rho)
 
         eps_w = torch.randn_like(weight_sigma)
         weight = self.weight_mu + weight_sigma * eps_w
+        self.kl = self._sample_kl(weight, mu1=self.weight_mu, sigma1=weight_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
 
         if self.bias_mu is not None:
             bias_sigma = F.softplus(self.bias_rho)
             eps_b = torch.randn_like(bias_sigma)
             bias = self.bias_mu + bias_sigma * eps_b
+            self.kl = self.kl + self._sample_kl(bias, mu1=self.bias_mu, sigma1=bias_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
         else:
             bias = None
 
@@ -172,6 +199,15 @@ class G_MLP(BaseMLP):
 
     def forward(self, x):
         return self.model(x)
+    
+    def kl_loss(self):
+        kl = 0.
+
+        for module in self.modules():
+            if isinstance(module, GaussianLinear):
+                kl += module.kl
+
+        return kl
 
 
 

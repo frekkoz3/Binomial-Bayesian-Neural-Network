@@ -38,8 +38,11 @@ def train(model : BaseMLP,
         out = model(x)
         loss = criterion(out, y)
 
+        beta = beta = 1 / len(loader)
+
         reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
-        loss = loss + reg_loss
+        kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
+        loss = loss + reg_loss + kl_loss
 
         optimizer.zero_grad()
         loss.backward()
@@ -62,8 +65,11 @@ def evaluate(model : BaseMLP,
         x, y = x.to(device), y.to(device)
         out = model(x)
 
+        beta = 1 / len(train_loader)
+
         reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
-        loss = criterion(out, y) + reg_loss
+        kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
+        loss = criterion(out, y) + reg_loss + kl_loss
         total_loss += loss.item()
 
     return total_loss / len(loader)
@@ -110,7 +116,7 @@ if __name__ == '__main__':
     n_epochs = 100
 
     # Move everything to config
-    cfg = {"model": "BGS_MLP",
+    cfg = {"model": "G_MLP",
            "dataset": "SinusoidData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
@@ -134,6 +140,7 @@ if __name__ == '__main__':
 
     # Load model
     model = eval(cfg["model"])(cfg)
+    model.to(device)
 
     criterion = nn.MSELoss()
     optimizer = Adam(model.parameters(), lr = 1e-4)
