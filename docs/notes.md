@@ -57,7 +57,7 @@ $$
 Since the gaussian has a support that exceeds the one of the binomial, we need to remap the obtained weights into the valid interval $[0, N]$ by using a simple clamping function:
 
 $$
-  \tilde^{(i)} = \text{ CL}(\tilde w^{(i)}, min=0, max=N)
+  \tilde w^{(i)} = \text{ CL} (\tilde w^{(i)}, \min=0, \max=N)
 $$
 
 The simple rounding function $\text{ round()}$ is not sufficient in the sense that it introduces a non-differentiable step; we can go around this problem exploiting the Straight-Through Estimator (STE) trick:
