@@ -54,7 +54,7 @@ $$
 The simple rounding function $\text{ round()}$ is not sufficient in the sense that it introduces a non-differentiable step; we can go around this problem exploiting the Straight-Through Estimator (STE) trick:
 
 $$
-w = \tilde w + \text{SG}\big( \text{ round}(\tilde w) - \tilde w \big)
+w = \tilde w + \text{SG}\big( \text{ round}(\tilde w).clamp(0, N) - \tilde w \big)
 $$
 
 where $\text{SG}$ is a stop-gradient step that ensures full differentiability: it preserves the rounded value during the forward pass, while propagating the identity gradient during the backward.
