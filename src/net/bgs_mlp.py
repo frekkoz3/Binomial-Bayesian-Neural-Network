@@ -356,7 +356,9 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
     def forward(self, x):
         """Forward pass"""
         w = self.forward_param(self.rho)
-        b = self.forward_param(self.bias) if self.bias is not None else None
+        # b = self.forward_param(self.bias) if self.bias is not None else None
+
+        b = self.bias if self.bias is not None else None
 
         self.tau_scheduler.step()
         return F.linear(x, w, b)
