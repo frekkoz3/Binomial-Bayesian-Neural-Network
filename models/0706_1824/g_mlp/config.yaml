@@ -1,0 +1,14 @@
+batch_size: 16
+bias: true
+dataset: SinusoidData
+device: cpu
+input_dim: 1
+lower_bound: -1.5
+model: G_MLP
+n_samples: 1000
+output_dim: 1
+shuffle: true
+tau_scheduler: ConstantTauScheduler
+train_prop: 0.8
+upper_bound: 1.5
+val_prop: 0.2
