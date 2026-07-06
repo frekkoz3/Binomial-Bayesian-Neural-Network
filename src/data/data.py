@@ -107,17 +107,20 @@ class SinusoidData(Dataset):
                  val_prop,
                  batch_size,
                  input_dim,
-                 shuffle):
+                 shuffle,
+                 noise : bool = False):
         super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
+        self.noise_value = 0.1
 
 
     def _function(self, x):
         y = torch.sin(x) + 0.5 * torch.sin(2 * x) + 0.1 * x **2
+        y += torch.randn(y.shape) * self.noise_value
         return y
 
 
 
-class SinusoidGapDataset(Dataset):
+class SinusoidGapData(Dataset):
     """
     Sum of sinusoid data with a gap in [LowerBound, UpperBound], meaning that all the samples are outside this range
         sin(x)+ 0.5 sin(2x) + 0.25 x^2
@@ -129,13 +132,10 @@ class SinusoidGapDataset(Dataset):
                  batch_size,
                  input_dim,
                  shuffle,
-                 low,
-                 high,
                  lower_bound,
-                 upper_bound):
+                 upper_bound,
+                 noise : bool = False):
         super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
-        self.low = low
-        self.high = high
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
 
@@ -144,18 +144,26 @@ class SinusoidGapDataset(Dataset):
         y = torch.sin(x) + 0.5 * torch.sin(2 * x) + 0.1 * x **2
         return y
 
-    def generate_data(self, min : int = -2, max : int = 2):
-        x = torch.rand(self.n_samples, self.input_dim)*(max-min) + min
 
-        gap_mask = (x < self.lower_bound) | (x > self.upper_bound)
-        x = x[gap_mask]
+    def generate_data(self, minimum : float = -2., maximum : float = 2.):
+        x = (maximum - minimum) * torch.rand(size=(self.n_samples, self.input_dim)) + minimum
 
         y = self._function(x)
+        y += torch.randn(y.shape) * 0.1
 
         dataset = TensorDataset(x, y)
 
         train_data, val_data, test_data = random_split(dataset, [self.train_size, self.val_size, self.test_size])
-        train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        x_train = dataset.tensors[0][train_data.indices]
+        y_train = dataset.tensors[1][train_data.indices]
+        gap_mask = (x_train < self.lower_bound) | (x_train > self.upper_bound)
+
+        x_train_filtered = x_train[gap_mask].view(-1, self.input_dim)
+        y_dim = y.shape[1] if len(y.shape) > 1 else 1
+        y_train_filtered = y_train[gap_mask].view(-1, y_dim)
+        train_data_filtered = TensorDataset(x_train_filtered, y_train_filtered)
+
+        train_loader = DataLoader(train_data_filtered, batch_size=self.batch_size, shuffle=self.shuffle)
         val_loader = DataLoader(val_data, batch_size=self.batch_size, shuffle=self.shuffle)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=self.shuffle) if self.test_size > 0 else None
 

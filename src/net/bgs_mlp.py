@@ -155,7 +155,8 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
                  N : int = 50,
                  tau_scheduler : str | None = None,
                  tau_parameters : dict | None = None,
-                 resolution : int = 8):
+                 resolution : int = 8,
+                 bias : bool = True):
         super().__init__()
 
         self.min_val = min_val
@@ -396,6 +397,7 @@ class BGS_MLP(nn.Module):
                                                       min_val=cfg["min_val"],
                                                       max_val=cfg["max_val"],
                                                       N=cfg["N"],
+                                                      bias = cfg["bias"],
                                                       tau_scheduler=cfg.get("tau_scheduler", None),
                                                       tau_parameters=cfg.get("tau_parameters", None)) )
             layers.append(ACTIVATIONS[activation]())
@@ -406,6 +408,7 @@ class BGS_MLP(nn.Module):
                                                    min_val=cfg["min_val"],
                                                    max_val=cfg["max_val"],
                                                    N=cfg["N"],
+                                                   bias = cfg["bias"],
                                                    tau_scheduler=cfg.get("tau_scheduler", None),
                                                    tau_parameters=cfg.get("tau_parameters", None)) )
         self.model = nn.Sequential(*layers)
