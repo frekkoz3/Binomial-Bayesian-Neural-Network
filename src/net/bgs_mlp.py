@@ -153,7 +153,6 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
                  min_val : int = -5,
                  max_val : int = 5,
                  N : int = 50,
-                 bias : bool = True,
                  tau_scheduler : str | None = None,
                  tau_parameters : dict | None = None,
                  resolution : int = 8):
@@ -171,21 +170,27 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.avg_inference = False
 
         self.rho = nn.Parameter(torch.empty(out_features, in_features))
-        self.bias = nn.Parameter(torch.empty(out_features)) if bias else self.register_parameter("bias", None)
+        self.bias = nn.Parameter(torch.empty(out_features))
 
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
         self._reset_parameters(d=in_features)
 
+        # Log Combinations for Binomial Distribution:
+        # log(N!) - log(k!) - log((N-k)!)
+        k_tensor = torch.arange(self.N + 1, dtype=torch.float32)
+        log_comb = torch.lgamma(torch.tensor(self.N + 1.0)) - torch.lgamma(k_tensor + 1.0) - torch.lgamma(self.N - k_tensor + 1.0)
+
+        self.register_buffer("k_view", k_tensor.view(-1, 1, 1))
+        self.register_buffer("log_comb_view", log_comb.view(-1, 1, 1))
+
 
     def _reset_parameters(self, d : int = None):
         """Initialize the learnable parameters"""
         std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
         nn.init.normal_(self.rho, std = std)
-
-        if self.bias is not None:
-            nn.init.normal_(self.bias, std = std)
+        nn.init.normal_(self.bias, std = std)
 
 
     def _get_tau(self):
@@ -292,9 +297,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
 
         self.rho = nn.Parameter(torch.log(p/(1-p)))
 
-        if self.bias_p is not None:
-            bp = torch.clamp(self.bias_p, eps, 1 - eps)
-            self.bias = nn.Parameter(torch.log(bp/(1-bp)))
+        self.bias = nn.Parameter(torch.log(self.bias_p/(1-self.bias_p))) if self.bias is not None else None
 
         self.weight_p = None
         self.bias_p = None
@@ -309,7 +312,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
 
     def _expected_weight(self, p):
         """Compute the expected weight value given the probability p"""
-        return self.min_val + (self.max_val - self.min_val) * p
+        return self.min_val + (self.max_val - self.min_val) * p / self.N
 
 
     def forward_param(self, param):
@@ -317,31 +320,27 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         if self.mode == Mode.INFERENCE:
             p = self.weight_p if param is self.rho else self.bias_p
             weight = self._sample_weight(p)
-            normalized_weight = self._expected_weight(weight)
-            return normalized_weight
-        else:
-            p = torch.sigmoid(param)
+            return self._expected_weight(weight)
 
         if self.avg_inference:
-            param = self._expected_weight(p)
+            param = self._expected_weight(torch.sigmoid(param))
             return param
 
         tau = self._get_tau()
 
-        # Compute the class probabilities for the binomial distribution
-        pi = torch.zeros((self.N+1, *p.shape), device=p.device)
-        for k in range(self.N+1):
-            pi[k] = math.comb(self.N, k) * (p**k) * ((1-p)**(self.N-k))
-        pi = torch.clamp(pi, min=1e-10)
+        # Use log(p) and log(1-p) for numerical stability
+        log_p = F.logsigmoid(param)
+        log_1_minus_p = F.logsigmoid(-param)
+        # Broadcast to get logits
+        logits = self.log_comb_view + (self.k_view * log_p) + ((self.N - self.k_view) * log_1_minus_p)
+        logits_t = logits.permute(1, 2, 0)
 
         # Apply Gumbel-Softmax reparameterization trick
-        u = torch.rand_like(pi)
-        g = - torch.log( - torch.log(u+1e-10) + 1e-10)
-        soft = F.softmax( (g+torch.log(pi))/tau, dim=0 )
+        soft = F.gumbel_softmax(logits_t, tau=tau, hard=False, dim=-1)
 
         # Soft is one-hot encoded, so we need to remap it to the original values {0, ..., N}
-        categories = torch.arange(self.N + 1, device=p.device).view(-1, *([1]*len(p.shape)))
-        param = torch.sum(soft * categories, dim=0)
+        categories = torch.arange(self.N + 1, device=param.device, dtype=param.dtype)
+        param = torch.sum(soft * categories, dim=-1)
 
         # Discretization
         param_round = param.round()
@@ -360,7 +359,6 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
 
         b = self.bias if self.bias is not None else None
 
-        self.tau_scheduler.step()
         return F.linear(x, w, b)
 
 
@@ -473,6 +471,16 @@ class BGS_MLP(nn.Module):
         for layer in self.model:
             if hasattr(layer, "resolution"):
                 layer.resolution = resolution
+
+
+    def step_tau(self):
+        """
+        Advances the tau scheduler by one epoch for all discrete layers.
+        Must be called once at the end of each training epoch.
+        """
+        for layer in self.model:
+            if hasattr(layer, "tau_scheduler"):
+                layer.tau_scheduler.step()
 
     def forward(self, x):
         return self.model(x)
