@@ -140,8 +140,11 @@ class SinusoidGapData(Dataset):
                  shuffle,
                  lower_bound,
                  upper_bound,
-                 noise : bool = False):
-        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
+                 noise : bool = False,
+                 *args,
+                 **kwargs):
+
+        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle, *args, **kwargs)
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
 
@@ -189,7 +192,9 @@ class UCIRegressionDataset(Dataset):
                  batch_size: int = 32,
                  shuffle: bool = True,
                  seed: int = 0,
-                 target_index: int = 0):
+                 target_index: int = 0,
+                 *args,
+                 **kwargs):
         
 
         os.makedirs(_UCI_CACHE_DIR, exist_ok=True)
@@ -204,7 +209,11 @@ class UCIRegressionDataset(Dataset):
         X = torch.tensor(features.to_numpy(dtype=np.float32))
         y = torch.tensor(targets.iloc[:, target_index].to_numpy(dtype=np.float32)).unsqueeze(1)
 
-        super().__init__(len(X), train_prop, val_prop, batch_size, X.shape[1], shuffle)
+        kwargs.pop('n_samples', None)
+        kwargs.pop('input_dim', None) # You also pass input_dim positionally as X.shape[1]!
+        kwargs.pop('output_dim', None)
+
+        super().__init__(len(X), train_prop, val_prop, batch_size, X.shape[1], shuffle, *args, **kwargs)
         self.output_dim = y.shape[1]
 
         perm = np.random.default_rng(seed).permutation(self.n_samples)
@@ -229,6 +238,11 @@ class UCIRegressionDataset(Dataset):
         val_loader = DataLoader(self.val_data, batch_size=self.batch_size, shuffle=False)
         test_loader = DataLoader(self.test_data, batch_size=self.batch_size, shuffle=False)
         return train_loader, val_loader, test_loader
+
+    def _get_dims(self):
+        input_dim = self.train_data.tensors[0].shape[1]
+        output_dim = self.train_data.tensors[1].shape[1]
+        return input_dim, output_dim
 
 
 UCI_DATASETS = {
