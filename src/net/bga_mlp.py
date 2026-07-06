@@ -63,8 +63,7 @@ class BinomialGaussianLinear(nn.Module):
         since a Binomial distribution with parameter `N` has a support of size `N + 1`.
 
         The learnable parameter `rho` is initialized from a gaussian with mean 0 and variance 1 (which contains mostly values in the range [-2.5, 2.5]).
-        An optional bias term can also be included; when enabled, the bias is modeled by an independent Binomial distribution
-        with its own learnable parameters.
+        An optional bias term can also be included; when enabled, the bias is i simple nn.Parameter.
     """
 
     def __init__(self,

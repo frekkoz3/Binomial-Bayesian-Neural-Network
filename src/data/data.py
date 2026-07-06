@@ -57,7 +57,7 @@ class Dataset:
 
         return train_loader, val_loader, test_loader, train_data, val_data, test_data
 
-    
+
 
 class DiscreteNoisyDataset(Dataset):
     """
@@ -90,7 +90,7 @@ class DiscreteNoisyDataset(Dataset):
         x = torch.tensor(self.choices)[idx]
         y = self._function(x)
 
-        y = (y - y.mean())/y.norm()
+        y = torch.nn.functional.normalize(y, dim = 0)
 
         dataset = TensorDataset(x, y)
 
@@ -162,7 +162,7 @@ class SinusoidGapData(Dataset):
         y = self._function(x)
         y += torch.randn(y.shape) * 0.1
 
-        y = (y - y.mean()) / y.norm()
+        y = torch.nn.functional.normalize(y, dim = 0)
 
         dataset = TensorDataset(x, y)
 

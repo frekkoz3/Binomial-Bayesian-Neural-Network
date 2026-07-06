@@ -113,11 +113,11 @@ if __name__ == '__main__':
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 1000
+    n_epochs = 10
 
     # Move everything to config
     cfg = {"model": "BGS_MLP",
-           "dataset": "UCIRegressionDataset",
+           "dataset": "SinusoidGapData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : output_dim,
