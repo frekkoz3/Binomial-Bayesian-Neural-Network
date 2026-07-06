@@ -93,9 +93,9 @@ class BinomialGaussianLinear(nn.Module):
         )
 
         if bias:
-            self.bias_rho = nn.Parameter(torch.empty(out_features))
+            self.bias = nn.Parameter(torch.empty(out_features))
         else:
-            self.register_parameter("bias_rho", None)
+            self.register_parameter("bias", None)
 
         self.mode = "train"  # or "inference"
         self.register_buffer("weight_p", None)
@@ -132,8 +132,8 @@ class BinomialGaussianLinear(nn.Module):
         std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
         nn.init.normal_(self.weight_rho, std=std)
 
-        if self.bias_rho is not None:
-            nn.init.normal_(self.bias_rho, std = std)
+        if self.bias is not None:
+            nn.init.normal_(self.bias)
 
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
@@ -142,19 +142,16 @@ class BinomialGaussianLinear(nn.Module):
 
         if self.mode == Mode.INFERENCE:
             p = self.weight_p
-            p_b = self.bias_p if self.bias_rho is not None else None
         else:
             p = torch.sigmoid(self.weight_rho)
-            p_b = torch.sigmoid(self.bias_rho) if self.bias_rho is not None else None
 
         if self.avg_inference:
             # use model._set_avg_inference(True) to use this modality instead
             # this modality simply let you use the average output of the distribution as weight
             # instead of sampling from the actual distribution
             w = self._expected_weight(p)
-            b = self._expected_weight(p_b) if p_b is not None else None
 
-            return F.linear(x, w, b)
+            return F.linear(x, w, self.bias)
 
         mu = self.N * p
         sigma = torch.sqrt(self.N * p * (1 - p) + 1e-8)
@@ -167,22 +164,7 @@ class BinomialGaussianLinear(nn.Module):
 
         w = self.min_val + (self.max_val - self.min_val) * (w / self.N)
 
-        if p_b is not None:
-            b = self.bias_rho
-            # mu_b = self.N * p_b
-            # sigma_b = torch.sqrt(self.N * p_b * (1 - p_b) + 1e-8)
-            #
-            # eps_b = torch.randn_like(mu_b)
-            # b = mu_b + sigma_b * eps_b
-            #
-            # b_round = b.round()
-            # b = b + (b_round - b).detach()
-            #
-            # b = self.min_val + (self.max_val - self.min_val) * (b / self.N)
-        else:
-            b = None
-
-        return F.linear(x, w, b)
+        return F.linear(x, w, self.bias)
     
     def export_inference_state(self, quantize=True):
         with torch.no_grad():
@@ -200,12 +182,7 @@ class BinomialGaussianLinear(nn.Module):
                 "weight_p": p.clone()
             }
 
-            if self.bias_rho is not None:
-                bp = torch.sigmoid(self.bias_rho)
-                if quantize:
-                    step = (1<<self.resolution) - 1
-                    bp = torch.round(bp * step) / step
-                state["bias_p"] = bp.clone()
+            state["bias"] = self.bias.clone()
 
             return state
     
@@ -218,9 +195,9 @@ class BinomialGaussianLinear(nn.Module):
         self.weight_p = state["weight_p"].clone()
         self.register_buffer("weight_p", self.weight_p)
 
-        if "bias_p" in state:
-            self.bias_p = state["bias_p"].clone()
-            self.register_buffer("bias_p", self.bias_p)
+        if "bias" in state:
+            self.bias = state["bias"].clone()
+            self.register_buffer("bias", self.bias)
 
         self.mode = Mode.INFERENCE
 
@@ -232,12 +209,7 @@ class BinomialGaussianLinear(nn.Module):
 
         self.weight_rho = nn.Parameter(torch.log(p/(1-p)))
 
-        if self.bias_p is not None:
-            bp = torch.clamp(self.bias_p, eps, 1 - eps)
-            self.bias_rho = nn.Parameter(torch.log(bp/(1-bp)))
-
         self.weight_p = None
-        self.bias_p = None
 
         self.mode =  Mode.TRAIN
     
