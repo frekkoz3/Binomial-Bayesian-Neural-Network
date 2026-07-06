@@ -101,47 +101,42 @@ def fit(model : BaseMLP,
 if __name__ == '__main__':
 
     # Setup some parameters
-    n_samples = 120
+    n_samples = 1000
     batch_size = 16
     input_dim = 1
     output_dim = 1
 
     train_prop = 0.8
     val_prop = 0.2
-    shuffle_data = True
+    shuffle = True
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 100
+    n_epochs = 1000
 
     # Move everything to config
-    cfg = {"model": "BGA_MLP",
-           "dataset": "SinusoidData",
+    cfg = {"model": "BGS_MLP",
+           "dataset": "UCIRegressionDataset",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : output_dim,
            "train_prop": train_prop,
            "val_prop": val_prop,
            "batch_size": batch_size,
-           "shuffle_data": shuffle_data,
+           "shuffle": shuffle,
            "device" : device,
            "tau_scheduler" : "ConstantTauScheduler",
            "bias" : True,
 
-           "lower_bound" : 0.5,
-           "upper_bound" : 3,
+           "lower_bound" : -1.5,
+           "upper_bound" : 1.5,
+
+           "uci_id" : 165
            }
 
     # Get data
-    dataset_loader = eval(cfg["dataset"])(cfg["n_samples"],
-                                          cfg["train_prop"],
-                                          cfg["val_prop"],
-                                          cfg["batch_size"],
-                                          cfg["input_dim"],
-                                          cfg["shuffle_data"],
-                                          cfg["lower_bound"],
-                                          cfg["upper_bound"])
+    dataset_loader = eval(cfg["dataset"])(**cfg)
     train_loader, val_loader, test_loader, _ , _, _ = dataset_loader.generate_data()
 
     # Load model
