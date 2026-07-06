@@ -136,7 +136,7 @@ class BinomialGaussianLinear(nn.Module):
         print(f"{d} : {std}")
 
         if self.bias is not None:
-            nn.init.normal_(self.bias)
+            nn.init.normal_(self.bias, std = std)
 
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
@@ -162,7 +162,7 @@ class BinomialGaussianLinear(nn.Module):
         eps = torch.randn_like(mu)
         w = mu + sigma * eps
 
-        w_round = w.round()
+        w_round = w.round().clamp(0, self.N)
         w = w + (w_round - w).detach()
 
         w = self.min_val + (self.max_val - self.min_val) * (w / self.N)
@@ -214,7 +214,9 @@ class BinomialGaussianLinear(nn.Module):
         self.weight_p = None
 
         self.mode =  Mode.TRAIN
-    
+
+
+
 class BGA_MLP(BaseMLP):
     """
         Multi Layer Perceptron (MLP) with Binomial distribution over the weights (approximated as Gaussian).
@@ -306,14 +308,17 @@ class BGA_MLP(BaseMLP):
 
         self.model = nn.Sequential(*layers)
 
+
     def forward(self, x):
         return self.model(x)
-    
+
+
     def set_mode(self, mode: Mode = Mode.TRAIN):
         self.mode = mode
         for layer in self.model:
             if hasattr(layer, "mode"):
                 layer.mode = mode
+
 
     def export_inference_state(self, quantize=True):
         state = []
@@ -327,13 +332,15 @@ class BGA_MLP(BaseMLP):
         return {
             "layers": state
         }
-    
+
+
     def load_inference_state(self, state):
         for layer, layer_state in zip(self.model, state["layers"]):
             if layer_state is not None and hasattr(layer, "load_inference_state"):
                 layer.load_inference_state(layer_state)
 
         self.set_mode(Mode.INFERENCE)
+
 
     def restore_train_mode(self):
         for layer in self.model:
@@ -342,6 +349,7 @@ class BGA_MLP(BaseMLP):
 
         self.set_mode(Mode.TRAIN)
 
+
     def set_avg_inference(self, flag : bool = True):
         for layer in self.model:
             if hasattr(layer, "_set_avg_inference"):
@@ -349,11 +357,14 @@ class BGA_MLP(BaseMLP):
 
         self.avg_inference = flag
 
+
     def set_resolution(self, resolution : int):
         """Set the storage bit-width of `p` on every layer."""
         for layer in self.model:
             if hasattr(layer, "resolution"):
                 layer.resolution = resolution
+
+
 
 if __name__ == '__main__':
 

@@ -88,6 +88,7 @@ class ConstantTauScheduler(TauScheduler):
     def __init__(self, tau_0 : float = 1.0):
         super().__init__()
         self.tau_0 = tau_0
+        self.epoch = 0
 
     @property
     def tau(self):
