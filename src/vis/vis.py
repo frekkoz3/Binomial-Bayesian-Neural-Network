@@ -8,7 +8,8 @@ r"""
 import torch
 import math
 from matplotlib import pyplot as plt
-# these functions are vibe coded
+
+from src.val.metrics import *
 
 def plot_history(history: dict):
     """
@@ -53,11 +54,14 @@ def plot_results(model, dataloader, device="cpu"):
     ys = []
     preds = []
 
+
+    
+
     for x, y in dataloader:
 
         x = x.to(device)
 
-        pred = model(x)
+        pred, _= predictive_moments(model, x, n_samples=100, device=device)
 
         xs.append(x.cpu())
         ys.append(y.cpu())
@@ -76,8 +80,8 @@ def plot_results(model, dataloader, device="cpu"):
 
     plt.figure(figsize=(8, 5))
 
-    plt.scatter(xs, ys, s=15, label="Ground truth")
-    plt.plot(xs, preds, linewidth=2, label="Prediction")
+    plt.scatter(xs, ys, s=15, label="Ground truth", c="blue")
+    plt.scatter(xs, preds, linewidth=2, label="Prediction", c="red")
 
     plt.xlabel("x")
     plt.ylabel("y")

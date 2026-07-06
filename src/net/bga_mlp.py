@@ -196,8 +196,7 @@ class BinomialGaussianLinear(nn.Module):
         self.register_buffer("weight_p", self.weight_p)
 
         if "bias" in state:
-            self.bias = state["bias"].clone()
-            self.register_buffer("bias", self.bias)
+            self.bias = torch.nn.Parameter(state["bias"].clone())
 
         self.mode = Mode.INFERENCE
 
@@ -284,7 +283,7 @@ class BGA_MLP(BaseMLP):
                                         )
                                         )
             
-            print(f"optimal std for layer {i}: {math.sqrt(weight_initialization(n=cfg["N"], n_i=in_dim, max_val=cfg["max_val"],min_val=cfg["min_val"]))}")
+            # print(f"optimal std for layer {i}: {math.sqrt(weight_initialization(n=cfg["N"], n_i=in_dim, max_val=cfg["max_val"],min_val=cfg["min_val"]))}")
 
             if act_name not in ACTIVATIONS:
                 raise ValueError(f"Unknown activation '{act_name}'.")

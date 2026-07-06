@@ -116,7 +116,7 @@ if __name__ == '__main__':
     n_epochs = 100
 
     # Move everything to config
-    cfg = {"model": "G_MLP",
+    cfg = {"model": "BGA_MLP",
            "dataset": "SinusoidData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
@@ -158,4 +158,4 @@ if __name__ == '__main__':
 
     # Plot results
     plot_history(history)
-    plot_results(model, val_loader, device)
+    plot_results(model, val_loader, device) # use only if 1D

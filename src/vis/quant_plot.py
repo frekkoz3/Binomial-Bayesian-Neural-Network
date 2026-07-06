@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from matplotlib import pyplot as plt
 from torch.optim import Adam
+import numpy as np
 
 from src.data.data import UCI_DATASETS, UCIRegressionDataset
 from src.exp.quant import resolution_foreach
@@ -20,20 +21,34 @@ from src.net.mlp import MLP
 from src.train.train import fit
 from src.val.metrics import gaussian_nll, rmse
 
-
 def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, save_path: str):
+    # Collect all unique bit-widths
+    bit_widths = sorted({row["bits"] for rows in results.values() for row in rows})
+    models = list(results.keys())
+
+    x = np.arange(len(bit_widths))
+    width = 0.8 / len(models)  # total group width = 0.8
+
     plt.figure(figsize=(8, 5))
 
-    for name, rows in results.items():
-        bits = [row["bits"] for row in rows]
-        metric_values = [row[metric] for row in rows]
-        plt.scatter(bits, metric_values, label=name, s=60)
+    for i, model in enumerate(models):
+        # Map bit-width -> metric
+        metric_map = {row["bits"]: row[metric] for row in results[model]}
+        values = [metric_map.get(b, np.nan) for b in bit_widths]
 
-    plt.xlabel("bits used to store p")
+        plt.bar(
+            x + (i - (len(models) - 1) / 2) * width,
+            values,
+            width=width,
+            label=model,
+        )
+
+    plt.xticks(x, bit_widths)
+    plt.xlabel("Bits used to store p")
     plt.ylabel(metric.upper())
     plt.yscale("log")
     plt.title(f"Quantization bit-width vs {metric.upper()}, by model")
-    plt.grid(True, alpha=0.3)
+    plt.grid(True, axis="y", alpha=0.3)
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_path)
@@ -43,7 +58,7 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     bit_widths = (32, 16, 8, 6, 4, 2)
-    epochs = 500
+    epochs = 100
 
     dataset = UCIRegressionDataset(UCI_DATASETS["concrete"], batch_size=64)
     train_loader, val_loader, test_loader = dataset.generate_data()
@@ -51,7 +66,7 @@ if __name__ == "__main__":
     shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim, "hidden_dims": 50}
     results = {}
 
-    # Non-quantizable models: MLP and G_MLP
+    # Non-quantizable models: G_MLP
     for name, cls in [("G_MLP", G_MLP)]:
         model = cls(shared_cfg).to(device)
         fit(model, train_loader, val_loader,
