@@ -278,7 +278,73 @@ $$
 
 From this perspective, we are keeping fixed the dimensions of the input and of the layer: what needs to be adapted is the width of the interval, which now needs to be computed layer-wisely.
 
+## Quantization
 
+We finally reason about how the quantization could work in our settings.
+
+In particular, we discuss some properties of the affine transformation of a binomial which makes the quantization feel natural and reasonable.
+
+### Discretizing the Parameter of the Binomial
+
+Instead of allowing any $p \in [0,1]$, we restrict it to the set
+
+$$
+p \in [0,\frac{1}{N},\frac{2}{N},\ldots,\frac{N-1}{N},1].
+$$
+
+For any true value of $p$, the nearest discretized value differs by at most
+
+$$
+|p-\tilde p| \le \frac{1}{2N}.
+$$
+
+After the affine transformation
+
+$$
+X=\mathrm{min}+\frac{\mathrm{max}-\mathrm{min}}{N}B,
+$$
+
+the expected value becomes
+
+$$
+\mathbb{E}[X]=\mathrm{min}+(\mathrm{max}-\mathrm{min})p.
+$$
+
+Therefore, discretizing $p$ changes the expected value by at most
+
+$$
+|\mathbb{E}[X]-\mathbb{E}[\tilde X]|
+\le
+\frac{\mathrm{max}-\mathrm{min}}{2N},
+$$
+
+which is exactly half of the spacing between two consecutive values of $X$, which is already quantized, with consecutive values separated by
+
+$$
+\Delta=\frac{\mathrm{max}-\mathrm{min}}{N}.
+$$
+
+Restricting $p$ to multiples of $1/N$ ensures that the induced error in the mean is always smaller than the intrinsic resolution of the variable $(\Delta/2)$. Moreover, the variance changes only by $O(\Delta^2)$, making the approximation increasingly accurate as the grid becomes finer. Consider also that usually $\Delta \ll 1$.
+
+Consequently, only $N+1$ distinct values of $p$ are required to represent the family of transformed binomial distributions with an error that is smaller than the quantization already imposed by the support of $X$. This substantially reduces the parameter space while introducing a negligible approximation error.
+
+### Quantization in practice
+
+Based on the previous analysis, we can exploit the discretization of the binomial parameter $p$ to reduce its numerical representation. Since only $N+1$ distinct values,
+
+$$
+p \in [0,\frac{1}{N},\ldots,1],
+$$
+
+are required, the minimum number of bits needed to encode (p) is simply the number required to represent (N+1) distinct states, i.e.,
+
+$$
+b = \left\lceil \log_2 (N+1) \right\rceil.
+$$
+
+This provides the theoretical lower bound (assuming a number representation that is not loosing bit for the sign) on the precision necessary to represent the parameter without introducing an error larger than the intrinsic quantization of the transformed random variable.
+
+In this project we will evaluate this hypothesis experimentally by comparing the behavior of the quantized representation against the full-precision implementation.
 
 ## References
 
