@@ -143,7 +143,7 @@ if __name__ == '__main__':
     model.to(device)
 
     criterion = nn.MSELoss()
-    optimizer = Adam(model.parameters(), lr = 1e-4)
+    optimizer = Adam(model.parameters(), lr = 1e-2)
 
     # Fit model
     history = fit(

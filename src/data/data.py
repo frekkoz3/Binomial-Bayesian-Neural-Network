@@ -42,8 +42,8 @@ class Dataset:
         pass
 
 
-    def generate_data(self):
-        x = torch.randn(self.n_samples, self.input_dim)
+    def generate_data(self, min : int = -2, max : int = 2):
+        x = torch.rand(self.n_samples, self.input_dim)*(max-min) + min
         y = self._function(x)
 
         dataset = TensorDataset(x, y)
@@ -96,7 +96,6 @@ class DiscreteNoisyDataset(Dataset):
         return train_loader, val_loader, test_loader, train_data, val_data, test_data
 
 
-
 class SinusoidData(Dataset):
     """
     Sum of sinusoid data
@@ -145,8 +144,8 @@ class SinusoidGapDataset(Dataset):
         y = torch.sin(x) + 0.5 * torch.sin(2 * x) + 0.1 * x **2
         return y
 
-    def generate_data(self):
-        x = torch.randint(low = self.low, high = self.high, size=(self.n_samples, self.input_dim)) * 1.5
+    def generate_data(self, min : int = -2, max : int = 2):
+        x = torch.rand(self.n_samples, self.input_dim)*(max-min) + min
 
         gap_mask = (x < self.lower_bound) | (x > self.upper_bound)
         x = x[gap_mask]

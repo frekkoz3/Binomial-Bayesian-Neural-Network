@@ -129,8 +129,10 @@ class BinomialGaussianLinear(nn.Module):
         self.saving_mode = mode
 
     def reset_parameters(self, d : int | None = None):
-        std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
-        nn.init.normal_(self.weight_rho, std=std)
+        nn.init.ones_(self.weight_rho)
+
+        """std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        nn.init.normal_(self.weight_rho, std=std)"""
 
         if self.bias is not None:
             nn.init.normal_(self.bias)

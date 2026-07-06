@@ -81,7 +81,7 @@ def plot_results(model, dataloader, device="cpu"):
     plt.figure(figsize=(8, 5))
 
     plt.scatter(xs, ys, s=15, label="Ground truth", c="blue")
-    plt.scatter(xs, preds, linewidth=2, label="Prediction", c="red")
+    plt.scatter(xs, preds, linewidth=1, label="Prediction", c="red")
 
     plt.xlabel("x")
     plt.ylabel("y")
