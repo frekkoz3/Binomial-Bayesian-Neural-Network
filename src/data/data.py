@@ -27,7 +27,9 @@ class Dataset:
                  val_prop,
                  batch_size,
                  input_dim,
-                 shuffle
+                 shuffle,
+                 *args,
+                 **kwargs
                  ):
         self.n_samples = n_samples
         self.train_size = int(train_prop * n_samples)
@@ -42,7 +44,7 @@ class Dataset:
         pass
 
 
-    def generate_data(self, min : int = -2, max : int = 2):
+    def generate_data(self, min : int = -4, max : int = 4):
         x = torch.rand(self.n_samples, self.input_dim)*(max-min) + min
         y = self._function(x)
 
@@ -70,8 +72,10 @@ class DiscreteNoisyDataset(Dataset):
                  input_dim,
                  shuffle,
                  sigma_squared,
-                 choices):
-        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
+                 choices,
+                 *args,
+                 **kwargs):
+        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle, *args, **kwargs)
         self.sigma_squared = sigma_squared
         self.choices = choices
 
@@ -108,8 +112,10 @@ class SinusoidData(Dataset):
                  batch_size,
                  input_dim,
                  shuffle,
-                 noise : bool = False):
-        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
+                 noise : bool = False,
+                 *args,
+                 **kwargs):
+        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle, *args, **kwargs)
         self.noise_value = 0.1
 
 
@@ -145,7 +151,7 @@ class SinusoidGapData(Dataset):
         return y
 
 
-    def generate_data(self, minimum : float = -2., maximum : float = 2.):
+    def generate_data(self, minimum : float = -4., maximum : float = 4.):
         x = (maximum - minimum) * torch.rand(size=(self.n_samples, self.input_dim)) + minimum
 
         y = self._function(x)

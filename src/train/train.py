@@ -101,7 +101,7 @@ def fit(model : BaseMLP,
 if __name__ == '__main__':
 
     # Setup some parameters
-    n_samples = 1000
+    n_samples = 120
     batch_size = 16
     input_dim = 1
     output_dim = 1
@@ -116,8 +116,8 @@ if __name__ == '__main__':
     n_epochs = 100
 
     # Move everything to config
-    cfg = {"model": "BGS_MLP",
-           "dataset": "SinusoidGapData",
+    cfg = {"model": "BGA_MLP",
+           "dataset": "SinusoidData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : output_dim,
@@ -129,8 +129,8 @@ if __name__ == '__main__':
            "tau_scheduler" : "ConstantTauScheduler",
            "bias" : True,
 
-           "lower_bound" : -0.5,
-           "upper_bound" : 0.5,
+           "lower_bound" : 0.5,
+           "upper_bound" : 3,
            }
 
     # Get data
