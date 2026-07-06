@@ -44,10 +44,9 @@ class Dataset:
         pass
 
 
-    def generate_data(self, min : int = -4, max : int = 4):
-        x = torch.rand(self.n_samples, self.input_dim)*(max-min) + min
+    def generate_data(self, minimum : float = -4., maximum : float = 4., gausianizzation: bool = False):
+        x = (maximum - minimum) * torch.rand(size=(self.n_samples, self.input_dim)) + minimum
         y = self._function(x)
-        y = (y - y.mean()) / y.norm()        
         dataset = TensorDataset(x, y)
 
         train_data, val_data, test_data = random_split(dataset, [self.train_size, self.val_size, self.test_size])

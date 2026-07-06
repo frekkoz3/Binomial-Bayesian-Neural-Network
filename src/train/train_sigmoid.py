@@ -17,9 +17,10 @@ from src.train.train import *
 
 if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
+    save = True
     # Setup some parameters
     n_samples = 1000
-    batch_size = 16
+    batch_size = 32
     input_dim = 1
     output_dim = 1
 
@@ -32,12 +33,12 @@ if __name__ == "__main__":
 
     n_epochs = 1000
 
-    models = ["BGS_MLP", "BGA_MLP", "G_MLP", "MLP"]
+    models = ["BGA_MLP", "BGS_MLP", "G_MLP", "MLP"]
 
     for model_name in models:
         # Move everything to config
         cfg = {"model": model_name,
-               "dataset": "SinusoidGapData",
+               "dataset": "SinusoidData",
                "n_samples" : n_samples,
                "input_dim" : input_dim,
                "output_dim" : output_dim,
@@ -82,7 +83,7 @@ if __name__ == "__main__":
         plot_history(
             history,
             model_name,
-            save=True,
+            save=save,
             path=f"{run_folder}/history.png"
         )
 
@@ -90,7 +91,7 @@ if __name__ == "__main__":
             model,
             val_loader,
             device=device,
-            save=True,
+            save=save,
             path=f"{run_folder}/results.png"
         )
 
