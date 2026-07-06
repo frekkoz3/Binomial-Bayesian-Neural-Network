@@ -11,8 +11,11 @@ Most of the details are present in referenced material.
   * [Binomial Weights in Neural Networks](#binomial-weights-in-neural-networks)
   * [Gaussian Approximation](#gaussian-approximation)
   * [Gumbel-Softmax Reparameterization Trick](#gumbel-softmax-reparameterization-trick)
-  * [Weight Initialization](#weights-initialization)
-* [References](#references)
+  * [Weights Initialization](#weights-initialization)
+  * [Quantization](#quantization)
+    * [Discretizing the Parameter of the Binomial](#discretizing-the-parameter-of-the-binomial)
+    * [Quantization in practice](#quantization-in-practice)
+  * [References](#references)
 <!-- TOC -->
 
 ## Binomial Weights in Neural Networks
@@ -51,10 +54,16 @@ $$
   \tilde w \approx Np + \sqrt{Np(1-p)} \cdot \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0,1).
 $$
 
+Since the gaussian has a support that exceeds the one of the binomial, we need to remap the obtained weights into the valid interval $[0, N]$ by using a simple clamping function:
+
+$$
+  \tilde^{(i)} = \text{ CL}(\tilde w^{(i)}, min=0, max=N)
+$$
+
 The simple rounding function $\text{ round()}$ is not sufficient in the sense that it introduces a non-differentiable step; we can go around this problem exploiting the Straight-Through Estimator (STE) trick:
 
 $$
-w = \tilde w + \text{SG}\big( \text{ round}(\tilde w).clamp(0, N) - \tilde w \big)
+w = \tilde w + \text{SG}\big( \text{ round}(\tilde w) - \tilde w \big)
 $$
 
 where $\text{SG}$ is a stop-gradient step that ensures full differentiability: it preserves the rounded value during the forward pass, while propagating the identity gradient during the backward.
@@ -84,13 +93,20 @@ The reparameterization trick works as follows.
 
 2. Generate for each $u_i$ an auxiliar sample from a Gumbel distribution, as:$$g_i = - \log(-\log(u_i))$$
 
-3. Apply the softmax function to $g_i + \log \pi_i$:$$
-    s_i = \text{ softmax}(g_i + \log(\pi_i)) = \frac{\exp\big( (g_i + \log \pi_i) / \tau \big)}{\sum_{j=0}^N \exp\big((g_j + \log \pi_j)/\tau\big)}$$
+3. Apply the softmax function to $g_i + \log \pi_i$:
+
+$$
+    s_i = \text{ softmax}(g_i + \log(\pi_i)) = \frac{\exp\big( (g_i + \log \pi_i) / \tau \big)}{\sum_{j=0}^N \exp\big((g_j + \log \pi_j)/\tau\big)}
+$$
+
   where $\tau$ is the temperature parameter that, in practice, is annealed during learning.  
   When $\tau$ is small enough, the target one-hot $c_i$ is recovered; conversely, for $\tau \rightarrow \infty$ the distribution tends to a discrete uniform over the same support $\{ 0, \dots, N \}$.
 
-4. When dealing with neural network weights, we need to remap the obtained vector to a single scalar $\tilde w_j$, so that it now belongs to the interval defined by the extremes of the categorical distribution $ [0, N] $:$$
-  \tilde w_j \approx \sum_{i=0}^N s_i \cdot i$$
+4. When dealing with neural network weights, we need to remap the obtained vector to a single scalar $\tilde w_j$, so that it now belongs to the interval defined by the extremes of the categorical distribution $ [0, N] $:
+
+$$
+  \tilde w_j \approx \sum_{i=0}^N s_i \cdot i
+$$
 
 The approximation, actually, arises from the softmax step, which approximates the discrete probability by smoothing it in the continuous space.  
 Notice how, after this scheme, the distribution becomes fully differentiable.
@@ -143,13 +159,16 @@ $$
 $$
 
 The equation above holds because of the symmetry around 0. Indeed:
+
 $$
 \begin{align}
   \mathbb{V}[\omega x] &= \mathbb{V}[\omega]\mathbb{V}[x] + \mathbb{V}[\omega](\mathbb{E}[x])^2 + \mathbb{V}[x](\mathbb{E}[\omega]) \\
                         &= \mathbb{V}[\omega]\mathbb{V}[x] + 0 + \mathbb{E}[\omega] \\
 \end{align}
 $$
+
 By applying simple calculus, we have the following:
+
 $$
 \begin{align}
   \mathbb{E}[\omega] &= \mathbb{E}[v_{\min} +S \cdot \tilde \omega] \\
@@ -183,6 +202,7 @@ $$
 $$
 
 So that, consequently:
+
 $$
   \mathbb{E}[\tilde \omega] = N \cdot 1/2 = \frac{N}{2}
 $$
