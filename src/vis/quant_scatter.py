@@ -18,25 +18,25 @@ from src.net.bgs_mlp import BGS_MLP
 from src.net.g_mlp import G_MLP
 from src.net.mlp import MLP
 from src.train.train import fit
-from src.val.metrics import rmse
+from src.val.metrics import gaussian_nll, rmse
 
 
-def plot_quantization_vs_rmse(results: dict[str, list[dict]]):
+def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, save_path: str):
     plt.figure(figsize=(8, 5))
 
     for name, rows in results.items():
         bits = [row["bits"] for row in rows]
-        rmse_values = [row["rmse"] for row in rows]
-        plt.scatter(bits, rmse_values, label=name, s=60)
+        metric_values = [row[metric] for row in rows]
+        plt.scatter(bits, metric_values, label=name, s=60)
 
     plt.xlabel("bits used to store p")
-    plt.ylabel("RMSE")
+    plt.ylabel(metric.upper())
     plt.yscale("log")
-    plt.title("Quantization bit-width vs RMSE, by model")
+    plt.title(f"Quantization bit-width vs {metric.upper()}, by model")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("plots/quant_vs_rmse.png")
+    plt.savefig(save_path)
     plt.show()
 
 
@@ -52,14 +52,15 @@ if __name__ == "__main__":
     results = {}
 
     # Non-quantizable models: MLP and G_MLP
-    for name, cls in [("MLP", MLP), ("G_MLP", G_MLP)]:
+    for name, cls in [("G_MLP", G_MLP)]:
         model = cls(shared_cfg).to(device)
         fit(model, train_loader, val_loader,
             optimizer=Adam(model.parameters(), lr=1e-3),
             criterion=nn.MSELoss(), epochs=epochs, device=device)
 
         model_rmse = rmse(model, test_loader, device)
-        results[name] = [{"bits": bits, "rmse": model_rmse} for bits in bit_widths]
+        model_nll = gaussian_nll(model, test_loader, device)
+        results[name] = [{"bits": bits, "rmse": model_rmse, "nll": model_nll} for bits in bit_widths]
 
     # Quantizable models: BGA_MLP and BGS_MLP
     for name, cls, extra_cfg in [
@@ -72,6 +73,7 @@ if __name__ == "__main__":
             criterion=nn.MSELoss(), epochs=epochs, device=device)
 
         results[name] = resolution_foreach(model, test_loader, device,
-                                            bit_widths=bit_widths, metrics={"rmse": rmse})
+                                            bit_widths=bit_widths, metrics={"rmse": rmse, "nll": gaussian_nll})
 
-    plot_quantization_vs_rmse(results)
+    plot_quantization_vs_metric(results, metric="rmse", save_path="plots/quant_vs_rmse.png")
+    plot_quantization_vs_metric(results, metric="nll", save_path="plots/quant_vs_nll.png")

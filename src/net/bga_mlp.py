@@ -168,16 +168,17 @@ class BinomialGaussianLinear(nn.Module):
         w = self.min_val + (self.max_val - self.min_val) * (w / self.N)
 
         if p_b is not None:
-            mu_b = self.N * p_b
-            sigma_b = torch.sqrt(self.N * p_b * (1 - p_b) + 1e-8)
-
-            eps_b = torch.randn_like(mu_b)
-            b = mu_b + sigma_b * eps_b
-
-            b_round = b.round()
-            b = b + (b_round - b).detach()
-
-            b = self.min_val + (self.max_val - self.min_val) * (b / self.N)
+            b = self.bias_rho
+            # mu_b = self.N * p_b
+            # sigma_b = torch.sqrt(self.N * p_b * (1 - p_b) + 1e-8)
+            #
+            # eps_b = torch.randn_like(mu_b)
+            # b = mu_b + sigma_b * eps_b
+            #
+            # b_round = b.round()
+            # b = b + (b_round - b).detach()
+            #
+            # b = self.min_val + (self.max_val - self.min_val) * (b / self.N)
         else:
             b = None
 

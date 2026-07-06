@@ -246,8 +246,8 @@ $$
 \end{align}
 $$
 
-Notably, we need to ensure that the resulting quantity is defined positive ($16Y > 4$).  
-here things start to behave messily. Indeed we get:
+Finally, we need to ensure that the resulting quantity is positive ($16Y > 4$).  
+Here things start to behave messily. Indeed, we get:
 
 $$
 \begin{align}

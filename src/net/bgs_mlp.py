@@ -188,11 +188,6 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
             nn.init.normal_(self.bias, std = std)
 
 
-    def _expected_weight(self, p):
-        """Compute the expected weight value given the probability p"""
-        return self.min_val + (self.max_val - self.min_val) * p
-
-
     def _get_tau(self):
         """Get tau value"""
         return self.tau_scheduler.tau
@@ -307,10 +302,23 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.mode =  Mode.TRAIN
 
 
+    def _sample_weight(self, p):
+        """Sample a weight from the binomial distribution given the probability p"""
+        return torch.distributions.binomial.Binomial(total_count=self.N, probs=p).sample()
+
+
+    def _expected_weight(self, p):
+        """Compute the expected weight value given the probability p"""
+        return self.min_val + (self.max_val - self.min_val) * p
+
+
     def forward_param(self, param):
         """Forward definition for a generic parameter"""
         if self.mode == Mode.INFERENCE:
             p = self.weight_p if param is self.rho else self.bias_p
+            weight = self._sample_weight(p)
+            normalized_weight = self._expected_weight(weight)
+            return normalized_weight
         else:
             p = torch.sigmoid(param)
 
@@ -348,7 +356,9 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
     def forward(self, x):
         """Forward pass"""
         w = self.forward_param(self.rho)
-        b = self.forward_param(self.bias) if self.bias is not None else None
+        # b = self.forward_param(self.bias) if self.bias is not None else None
+
+        b = self.bias if self.bias is not None else None
 
         self.tau_scheduler.step()
         return F.linear(x, w, b)
