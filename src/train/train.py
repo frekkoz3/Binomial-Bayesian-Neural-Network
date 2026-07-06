@@ -65,7 +65,7 @@ def evaluate(model : BaseMLP,
         x, y = x.to(device), y.to(device)
         out = model(x)
 
-        beta = 1 / len(train_loader)
+        beta = 1 / len(loader)
 
         reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
         kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
