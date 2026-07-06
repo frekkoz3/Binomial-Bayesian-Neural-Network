@@ -84,12 +84,12 @@ class GaussianLinear(nn.Module):
     def reset_parameters(self):
         nn.init.kaiming_uniform_(self.weight_mu)
 
-        # small initial std
-        nn.init.constant_(self.weight_rho, -5.)
+        # Initial std
+        nn.init.constant_(self.weight_rho, 1.)
 
         if self.bias_mu is not None:
             nn.init.zeros_(self.bias_mu)
-            nn.init.constant_(self.bias_rho, -5.)
+            nn.init.constant_(self.bias_rho, 1.)
 
     def _log_prob(self, value, mu, sigma):
         """if isinstance(mu, float):
