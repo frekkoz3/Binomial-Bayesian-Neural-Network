@@ -100,7 +100,7 @@ class BinomialGaussianLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
-        self.reset_parameters(d=in_features)
+        self.reset_parameters(d=in_features, o=out_features)
 
     def get_extra_state(self):
         return {
@@ -127,12 +127,13 @@ class BinomialGaussianLinear(nn.Module):
         """
         self.saving_mode = mode
 
-    def reset_parameters(self, d : int | None = None):
+    def reset_parameters(self, d : int | None = None, o : int | None = None):
         #nn.init.ones_(self.weight_rho)
-
-        std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        std_sx = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        std_dx = math.sqrt(weight_initialization(self.N, o, self.max_val, self.min_val))
+        std = (std_sx + std_dx) / 2
         nn.init.normal_(self.weight_rho, std=std)
-        print(f"{d} : {std}")
+        print(f"Std SX: {std_sx}, Std DX: {std_dx}, Avg Std: {std}")
 
         if self.bias is not None:
             nn.init.normal_(self.bias, std = std)

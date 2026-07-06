@@ -177,7 +177,7 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
-        self._reset_parameters(d=in_features)
+        self._reset_parameters(d=in_features, o=out_features)
 
         # Log Combinations for Binomial Distribution:
         # log(N!) - log(k!) - log((N-k)!)
@@ -188,9 +188,12 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.register_buffer("log_comb_view", log_comb.view(-1, 1, 1))
 
 
-    def _reset_parameters(self, d : int = None):
+    def _reset_parameters(self, d : int = None, o : int = None):
         """Initialize the learnable parameters"""
-        std = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        std_sx = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
+        std_dx = math.sqrt(weight_initialization(self.N, o, self.max_val, self.min_val))
+        std = (std_sx + std_dx) / 2
+        print(f"Std SX: {std_sx}, Std DX: {std_dx}, Avg Std: {std}")
         nn.init.normal_(self.rho, std = std)
         nn.init.normal_(self.bias, std = std)
 
