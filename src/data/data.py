@@ -162,8 +162,6 @@ class SinusoidGapData(Dataset):
         y = self._function(x)
         y += torch.randn(y.shape) * 0.1
 
-        y = torch.nn.functional.normalize(y, dim = 0)
-
         dataset = TensorDataset(x, y)
 
         train_data, val_data, test_data = random_split(dataset, [self.train_size, self.val_size, self.test_size])
