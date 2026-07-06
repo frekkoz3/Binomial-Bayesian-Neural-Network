@@ -85,11 +85,11 @@ class GaussianLinear(nn.Module):
         nn.init.kaiming_uniform_(self.weight_mu)
 
         # Initial std
-        nn.init.constant_(self.weight_rho, 1.)
+        nn.init.constant_(self.weight_rho, -5.)
 
         if self.bias_mu is not None:
             nn.init.zeros_(self.bias_mu)
-            nn.init.constant_(self.bias_rho, 1.)
+            nn.init.constant_(self.bias_rho, -5.)
 
     def _log_prob(self, value, mu, sigma):
         """if isinstance(mu, float):

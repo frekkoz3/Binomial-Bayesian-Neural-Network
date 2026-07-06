@@ -11,8 +11,8 @@ from enum import Enum
 DEFAULT_CONFIG = {
         "input_dim": None,
         "output_dim": None,
-        "n_hidden_layer": 2,
-        "hidden_dims": [10, 10],
+        "n_hidden_layer": 1,
+        "hidden_dims": [10],
         "bias": True,
         "min_val" : -2,
         "max_val" : 2,

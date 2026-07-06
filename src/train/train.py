@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
     # Setup some parameters
     n_samples = 1000
-    batch_size = 32
+    batch_size = 16
     input_dim = 1
     output_dim = 1
 
@@ -142,6 +142,15 @@ if __name__ == '__main__':
     model = eval(cfg["model"])(cfg)
     model.to(device)
 
+    for layer in model.model:
+        if hasattr(layer, "weight_rho"):
+            print("weights")
+            print(torch.sigmoid(layer.weight_rho))
+        if hasattr(layer, "bias"):
+            print("bias")
+            print(layer.bias)
+            print("---")
+
     criterion = nn.MSELoss()
     optimizer = Adam(model.parameters(), lr = 1e-2)
 
@@ -159,3 +168,12 @@ if __name__ == '__main__':
     # Plot results
     plot_history(history)
     plot_results(model, val_loader, device) # use only if 1D
+
+    for layer in model.model:
+        if hasattr(layer, "weight_rho"):
+            print("weights")
+            print(torch.sigmoid(layer.weight_rho))
+        if hasattr(layer, "bias"):
+            print("bias")
+            print(layer.bias)
+            print("---")

@@ -39,11 +39,10 @@ def plot_history(history: dict):
     plt.tight_layout()
     plt.show()
 
-
 @torch.no_grad()
 def plot_results(model, dataloader, device="cpu"):
     """
-    Plot predictions for a 1D regression problem.
+    Plot predictions for a 1D regression problem with predictive uncertainty.
 
     Assumes:
         input_dim = 1
@@ -55,46 +54,74 @@ def plot_results(model, dataloader, device="cpu"):
     xs = []
     ys = []
     preds = []
-
-
-
+    vars_ = []
 
     for x, y in dataloader:
-
         x = x.to(device)
 
-        pred, _= predictive_moments(model, x, n_samples=100, device=device)
+        pred, var = predictive_moments(
+            model,
+            x,
+            n_samples=100,
+            device=device,
+        )
 
         xs.append(x.cpu())
         ys.append(y.cpu())
         preds.append(pred.cpu())
+        vars_.append(var.cpu())
 
     xs = torch.cat(xs).squeeze()
     ys = torch.cat(ys).squeeze()
     preds = torch.cat(preds).squeeze()
+    vars_ = torch.cat(vars_).squeeze()
 
-    # sort so the prediction is a proper curve
+    # Sort for a smooth curve
     idx = torch.argsort(xs)
 
     xs = xs[idx]
     ys = ys[idx]
     preds = preds[idx]
+    vars_ = vars_[idx]
+
+    std = torch.sqrt(torch.clamp(vars_, min=0))
 
     plt.figure(figsize=(8, 5))
 
-    plt.scatter(xs, ys, s=15, label="Ground truth", c="blue")
-    plt.scatter(xs, preds, linewidth=1, label="Prediction", c="red")
+    # Ground truth
+    plt.scatter(xs, ys, s=15, color="blue", label="Ground truth")
+
+    # Predictive mean
+    plt.plot(xs, preds, color="red", linewidth=2, label="Predictive mean")
+
+    # ±1 standard deviation
+    plt.fill_between(
+        xs.numpy(),
+        (preds - std).numpy(),
+        (preds + std).numpy(),
+        color="red",
+        alpha=0.25,
+        label=r"$\pm1\sigma$",
+    )
+
+    # Uncomment for a 95% interval (approximately)
+    # plt.fill_between(
+    #     xs.numpy(),
+    #     (preds - 2 * std).numpy(),
+    #     (preds + 2 * std).numpy(),
+    #     color="red",
+    #     alpha=0.15,
+    #     label=r"$\pm2\sigma$",
+    # )
 
     plt.xlabel("x")
     plt.ylabel("y")
-    plt.title("Model prediction")
+    plt.title("Model prediction with predictive uncertainty")
     plt.grid(True, alpha=0.3)
     plt.legend()
 
     plt.tight_layout()
     plt.show()
-
-
 
 def plot_gumbel_softmax_approximation(N : int = 10, p : float = 0.2, n_samples : int = 1000, taus : list[float] = [0.01, 0.1, 1, 10] ):
     """
