@@ -120,7 +120,7 @@ class SinusoidData(Dataset):
 
 class SinusoidGapDataset(Dataset):
     """
-    Sum of sinusoid data with a gap in [-1, 1], meaning that all the samples are outside this range
+    Sum of sinusoid data with a gap in [LowerBound, UpperBound], meaning that all the samples are outside this range
         sin(x)+ 0.5 sin(2x) + 0.25 x^2
     """
     def __init__(self,
@@ -129,8 +129,16 @@ class SinusoidGapDataset(Dataset):
                  val_prop,
                  batch_size,
                  input_dim,
-                 shuffle):
+                 shuffle,
+                 low,
+                 high,
+                 lower_bound,
+                 upper_bound):
         super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
+        self.low = low
+        self.high = high
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
 
 
     def _function(self, x):
@@ -138,9 +146,9 @@ class SinusoidGapDataset(Dataset):
         return y
 
     def generate_data(self):
-        x = torch.randn(self.n_samples, self.input_dim) * 1.5
-        # remove points in the gap
-        gap_mask = (x < -1) | (x > 1)
+        x = torch.randint(low = self.low, high = self.high, size=(self.n_samples, self.input_dim)) * 1.5
+
+        gap_mask = (x < self.lower_bound) | (x > self.upper_bound)
         x = x[gap_mask]
 
         y = self._function(x)
