@@ -57,6 +57,47 @@ class Dataset:
 
 
 
+class DiscreteNoisyDataset(Dataset):
+    """
+    Discrete noisy dataset
+        y = x + noise
+    """
+    def __init__(self,
+                 n_samples,
+                 train_prop,
+                 val_prop,
+                 batch_size,
+                 input_dim,
+                 shuffle,
+                 sigma_squared,
+                 choices):
+        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle)
+        self.sigma_squared = sigma_squared
+        self.choices = choices
+
+    def _function(self, x):
+        noise = torch.randn(x.shape) * self.sigma_squared
+        y = x + noise
+        return y
+
+
+    def generate_data(self):
+        idx = torch.randint(0, len(self.choices), (self.n_samples, self.input_dim))
+        x = torch.tensor(self.choices)[idx]
+        y = self._function(x)
+
+        dataset = TensorDataset(x, y)
+
+        train_data, val_data, test_data = random_split(dataset, [self.train_size, self.val_size, self.test_size])
+        train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        val_loader = DataLoader(val_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=self.shuffle) if self.test_size > 0 else None
+
+        return train_loader, val_loader, test_loader, train_data, val_data, test_data
+
+
+
+
 class SinusoidData(Dataset):
     """
     Sum of sinusoid data
