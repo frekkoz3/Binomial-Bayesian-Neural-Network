@@ -8,6 +8,8 @@ r"""
 import torch
 import math
 from matplotlib import pyplot as plt
+from torch.distributions import Normal, Binomial
+
 
 from src.val.metrics import *
 
@@ -55,7 +57,7 @@ def plot_results(model, dataloader, device="cpu"):
     preds = []
 
 
-    
+
 
     for x, y in dataloader:
 
@@ -99,8 +101,6 @@ def plot_gumbel_softmax_approximation(N : int = 10, p : float = 0.2, n_samples :
     Plot the Binomial distribution and above the plot the results of the gumbel softmax reparameterization trick above it.
     """
 
-    from torch.distributions import Binomial
-
     binom = Binomial(total_count=N, probs=p)
 
     # Sample from the binomial distribution
@@ -108,7 +108,7 @@ def plot_gumbel_softmax_approximation(N : int = 10, p : float = 0.2, n_samples :
     logits = binom.log_prob(x)
     y = logits.exp()
 
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(8, 5), dpi=600)
     plt.bar(x.numpy(), y.numpy(), width=0.5, alpha=0.5, label="Binomial Distribution")
 
     # Gumbel noise
@@ -121,11 +121,55 @@ def plot_gumbel_softmax_approximation(N : int = 10, p : float = 0.2, n_samples :
         plt.plot(x.numpy(), approx_distribution.numpy(), label=f"Gumbel-Softmax (τ={tau})", linewidth=2)
 
     plt.xlabel("x")
-    plt.ylabel("Probability")
+    plt.ylabel("Probability Density")
     plt.title("Gumbel-Softmax Approximation of Binomial Distribution")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
+
+    plt.savefig("img/gumbel_softmax_approximation.png", dpi=600)
+
+    plt.show()
+
+
+
+def plot_gaussian_approximation(N : int = 100, p : float = 0.2,  n_samples : int = 1000, bins : int = 100):
+    """
+    Plot the Gaussian reparameterization trick
+    """
+    binom = Binomial(total_count=N, probs=p)
+    mu = N * p
+    sigma = math.sqrt(N * p * (1 - p))
+    normal = Normal(loc=mu, scale=sigma)
+
+    x = torch.arange(0, N + 1)
+    logits = binom.log_prob(x)
+    y = logits.exp()
+
+    plt.figure(figsize=(8, 5), dpi=600)
+    plt.bar(x.numpy(), y.numpy(), width=0.5, alpha=0.5, label="Binomial Distribution")
+
+
+    # Sample from the normal distribution
+    norm_x = torch.linspace(mu - 4 * sigma, mu + 4 * sigma, n_samples)
+    norm_y = normal.log_prob(norm_x).exp()
+
+    plt.plot(norm_x.numpy(), norm_y.numpy(), label="Normal Distribution", linewidth=2)
+
+    z = torch.randn(n_samples)
+    rep_samples = mu + sigma * z
+    plt.hist(rep_samples.numpy(), bins=bins, density=True, alpha=0.2,
+             color='orange', label="Reparameterized Samples")
+
+    plt.xlabel("x")
+    plt.ylabel("Probability Density")
+    plt.title("Gaussian Approximation of Binomial Distribution")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+
+    plt.savefig("img/gaussian_approximation.png", dpi=600)
+
     plt.show()
 
 
@@ -133,4 +177,5 @@ def plot_gumbel_softmax_approximation(N : int = 10, p : float = 0.2, n_samples :
 
 if __name__ == "__main__":
     # Example usage of plot_gumbel_softmax_approximation
-    plot_gumbel_softmax_approximation(N=10, p=0.2, n_samples=1000, taus=[0.01, 0.1, 1, 10, 1000])
+    plot_gumbel_softmax_approximation(N = 15, p = 0.2, n_samples = 1000, taus = [0.01, 1, 10, 1000])
+    # plot_gaussian_approximation(N = 15, p = 0.2, n_samples = 1000, bins = 100)
