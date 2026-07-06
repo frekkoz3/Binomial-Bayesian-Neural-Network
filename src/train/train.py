@@ -116,8 +116,8 @@ if __name__ == '__main__':
     n_epochs = 100
 
     # Move everything to config
-    cfg = {"model": "BGA_MLP",
-           "dataset": "SinusoidData",
+    cfg = {"model": "BGS_MLP",
+           "dataset": "SinusoidGapData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : output_dim,
@@ -126,7 +126,11 @@ if __name__ == '__main__':
            "batch_size": batch_size,
            "shuffle_data": shuffle_data,
            "device" : device,
-           "tau_scheduler" : "ExponentialTauScheduler"
+           "tau_scheduler" : "ConstantTauScheduler",
+           "bias" : True,
+
+           "lower_bound" : -0.5,
+           "upper_bound" : 0.5,
            }
 
     # Get data
@@ -135,7 +139,9 @@ if __name__ == '__main__':
                                           cfg["val_prop"],
                                           cfg["batch_size"],
                                           cfg["input_dim"],
-                                          cfg["shuffle_data"])
+                                          cfg["shuffle_data"],
+                                          cfg["lower_bound"],
+                                          cfg["upper_bound"])
     train_loader, val_loader, test_loader, _ , _, _ = dataset_loader.generate_data()
 
     # Load model
