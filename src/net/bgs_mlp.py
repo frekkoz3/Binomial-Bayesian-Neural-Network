@@ -396,7 +396,6 @@ class BGS_MLP(nn.Module):
                                                       min_val=cfg["min_val"],
                                                       max_val=cfg["max_val"],
                                                       N=cfg["N"],
-                                                      bias=cfg["bias"],
                                                       tau_scheduler=cfg.get("tau_scheduler", None),
                                                       tau_parameters=cfg.get("tau_parameters", None)) )
             layers.append(ACTIVATIONS[activation]())
@@ -407,7 +406,6 @@ class BGS_MLP(nn.Module):
                                                    min_val=cfg["min_val"],
                                                    max_val=cfg["max_val"],
                                                    N=cfg["N"],
-                                                   bias=cfg["bias"],
                                                    tau_scheduler=cfg.get("tau_scheduler", None),
                                                    tau_parameters=cfg.get("tau_parameters", None)) )
         self.model = nn.Sequential(*layers)
@@ -496,7 +494,12 @@ if __name__ == "__main__":
 
     x = torch.randn(size=[batch_size, input_dim]).to(device)
 
-    cfg = {"input_dim" : input_dim, "output_dim" : output_dim, "device" : device, "tau_scheduler": "ExponentialTauScheduler", "tau_parameters" : {"tau_0" : 1.0, "k" : 0.01}}
+    cfg = {"input_dim" : input_dim,
+           "output_dim" : output_dim,
+           "device" : device,
+           "tau_scheduler": "ExponentialTauScheduler",
+           "tau_parameters" : {"tau_0" : 1.0, "k" : 0.01}
+           }
 
     model = BGS_MLP(cfg)
 
