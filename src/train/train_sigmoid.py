@@ -16,12 +16,7 @@ from src.train.train import *
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a model on the UCI regression dataset.")
-    parser.add_argument("--dataset-id", type=int, default=165, help="UCI Dataset to use")
-    args = parser.parse_args()
-
-    dataset_id = args.dataset_id
-
+    timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
     # Setup some parameters
     n_samples = 1000
     batch_size = 16
@@ -42,7 +37,7 @@ if __name__ == "__main__":
     for model_name in models:
         # Move everything to config
         cfg = {"model": model_name,
-               "dataset": "SinusoidData",
+               "dataset": "SinusoidGapData",
                "n_samples" : n_samples,
                "input_dim" : input_dim,
                "output_dim" : output_dim,
@@ -80,15 +75,30 @@ if __name__ == "__main__":
             device=device,
         )
 
-        # Plot results
-        plot_history(history, model_name, save=True)
-        plot_results(model, val_loader, device=device)
+        run_folder = f"models/{timestamp}/{model_name.lower()}"
+        if not os.path.exists(run_folder):
+            os.makedirs(run_folder, exist_ok=True)
 
-        # get timestamp for saving
-        timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
+        plot_history(
+            history,
+            model_name,
+            save=True,
+            path=f"{run_folder}/history.png"
+        )
 
-        torch.save(model.state_dict(), f"models/{model_name.lower()}/uci_{dataset_id}_{timestamp}.pt")
-        # save config in the same folder:
-        with open(f"models/{model_name.lower()}/uci_{dataset_id}_{timestamp}.yaml", "w") as f:
+        plot_results(
+            model,
+            val_loader,
+            device=device,
+            save=True,
+            path=f"{run_folder}/results.png"
+        )
+
+        torch.save(
+            model.state_dict(),
+            f"{run_folder}/model.pt"
+        )
+
+        with open(f"{run_folder}/config.yaml", "w") as f:
             yaml.dump(cfg, f)
 

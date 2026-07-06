@@ -38,6 +38,7 @@ if __name__ == "__main__":
     n_epochs = 1
 
     models = ["BGS_MLP", "BGA_MLP", "G_MLP", "MLP"]
+    timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
 
     for model_name in models:
         # Move everything to config
@@ -83,14 +84,22 @@ if __name__ == "__main__":
             device=device,
         )
 
-        # Plot results
-        plot_history(history, model_name, save=True)
+        run_folder = f"models/{timestamp}/{model_name.lower()}"
+        if not os.path.exists(run_folder):
+            os.makedirs(run_folder, exist_ok=True)
 
-        # get timestamp for saving
-        timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
+        plot_history(
+            history,
+            model_name,
+            save=True,
+            path=f"{run_folder}/history.png"
+        )
 
-        torch.save(model.state_dict(), f"models/{model_name.lower()}/uci_{dataset_id}_{timestamp}.pt")
-        # save config in the same folder:
-        with open(f"models/{model_name.lower()}/uci_{dataset_id}_{timestamp}.yaml", "w") as f:
+        torch.save(
+            model.state_dict(),
+            f"{run_folder}/model.pt"
+        )
+
+        with open(f"{run_folder}/config.yaml", "w") as f:
             yaml.dump(cfg, f)
 
