@@ -4,8 +4,6 @@
  █████  ██████   █████  ██ ██  ██
 ██      ██   ██ ██      ██  ██ ██
 ███████ ██████  ███████ ██   ████
-
-Just a bunch of useful simple and useful datasets
 """
 
 import os

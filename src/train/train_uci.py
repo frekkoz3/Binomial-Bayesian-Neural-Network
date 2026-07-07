@@ -1,3 +1,11 @@
+r"""
+██████  ██████  ██████  ███    ██ 
+     ██ ██   ██      ██ ████   ██ 
+ █████  ██████   █████  ██ ██  ██ 
+██      ██   ██ ██      ██  ██ ██ 
+███████ ██████  ███████ ██   ████                                 
+"""
+
 from torch.optim import Optimizer, Adam, AdamW
 import argparse
 import yaml
