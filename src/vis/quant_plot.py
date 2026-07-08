@@ -64,20 +64,20 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     bit_widths = (32, 16, 8, 6, 4, 2)
-    epochs = 100
+    epochs = 500
 
-    dataset = UCIRegressionDataset(UCI_DATASETS["concrete"], batch_size=64)
+    dataset = UCIRegressionDataset(UCI_DATASETS["energy"], batch_size=64)
     train_loader, val_loader, test_loader = dataset.generate_data()
 
-    shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim, "hidden_dims": 50}
+    shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim*2, "hidden_dims": [20, 20], "n_hidden_layer": 2, "heteroscedastic": True}
     results = {}
 
     # Baseline: G_MLP
-    for name, cls in [("MLP", MLP)]:
+    for name, cls in [("G_MLP", G_MLP)]:
         model = cls(shared_cfg).to(device)
         fit(model, train_loader, val_loader,
             optimizer=Adam(model.parameters(), lr=1e-3),
-            criterion=nn.MSELoss(), epochs=epochs, device=device)
+            criterion=nn.GaussianNLLLoss(full=True), epochs=epochs, device=device)
 
         model_rmse = rmse(model, test_loader, device)
         model_nll = gaussian_nll(model, test_loader, device)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         model = cls({**shared_cfg, **extra_cfg}).to(device)
         fit(model, train_loader, val_loader,
             optimizer=Adam(model.parameters(), lr=1e-3),
-            criterion=nn.MSELoss(), epochs=epochs, device=device)
+            criterion=nn.GaussianNLLLoss(full=True), epochs=epochs, device=device)
 
         results[name] = resolution_foreach(model, test_loader, device,
                                             bit_widths=bit_widths, metrics={"rmse": rmse, "nll": gaussian_nll})

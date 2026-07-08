@@ -421,6 +421,7 @@ class BGS_MLP(nn.Module):
         input_dims = cfg["input_dim"]
         hidden_dims = [cfg["hidden_dims"]] * n_hidden_layers if isinstance(cfg["hidden_dims"], int) else list(cfg["hidden_dims"])
         activations = [cfg["activations"]] * n_hidden_layers if isinstance(cfg["activations"], str) else list(cfg["activations"])
+        self.heteroscedastic = cfg["heteroscedastic"]
 
         layers = []
         for hidden_dim, activation in zip(hidden_dims, activations):

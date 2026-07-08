@@ -21,7 +21,8 @@ DEFAULT_CONFIG = {
         "activations" : "relu",
         "device" : "cuda",
         "resolution" : 8,
-        "kl_loss" : False
+        "kl_loss" : False,
+        "heteroscedastic" : False
 }
 
 ACTIVATIONS = {

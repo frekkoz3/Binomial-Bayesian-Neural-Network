@@ -70,7 +70,7 @@ if __name__ == "__main__":
         dataset = UCIRegressionDataset(UCI_DATASETS[ds_name], batch_size=64)
         train_loader, val_loader, test_loader = dataset.generate_data()
 
-        shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim, "hidden_dims": [20, 20], "n_hidden_layer": 2}
+        shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim*2, "hidden_dims": [20, 20], "n_hidden_layer": 2, "heteroscedastic": True}
 
         # Model loop
         for name, cls, extra_cfg in [
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
             fit(model, train_loader, val_loader,
                 optimizer=Adam(model.parameters(), lr=1e-3),
-                criterion=nn.MSELoss(), epochs=epochs, device=device)
+                criterion=nn.GaussianNLLLoss(full=True), epochs=epochs, device=device)
 
             results.setdefault(name, []).append({
                 "dataset": ds_name,

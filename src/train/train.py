@@ -36,7 +36,11 @@ def train(model : BaseMLP,
         x, y = x.to(device), y.to(device)
 
         out = model(x)
-        loss = criterion(out, y)
+        if getattr(model, "heteroscedastic", False):
+            mean, log_var = out.chunk(2, dim=-1)
+            loss = criterion(mean, y, log_var.exp())
+        else:
+            loss = criterion(out, y)
 
         beta = 1 / 10*len(loader)
 
@@ -69,7 +73,11 @@ def evaluate(model : BaseMLP,
 
         reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
         kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
-        loss = criterion(out, y) + reg_loss + kl_loss
+        if getattr(model, "heteroscedastic", False):
+            mean, log_var = out.chunk(2, dim=-1)
+            loss = criterion(mean, y, log_var.exp()) + reg_loss + kl_loss
+        else:
+            loss = criterion(out, y) + reg_loss + kl_loss
         total_loss += loss.item()
 
     return total_loss / len(loader)
@@ -113,14 +121,14 @@ if __name__ == '__main__':
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 1000
+    n_epochs = 200
 
     # Move everything to config
     cfg = {"model": "BGS_MLP",
            "dataset": "SinusoidData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
-           "output_dim" : output_dim,
+           "output_dim" : 2 * output_dim,
            "train_prop": train_prop,
            "val_prop": val_prop,
            "batch_size": batch_size,
@@ -128,12 +136,14 @@ if __name__ == '__main__':
            "device" : device,
            "tau_scheduler" : "ConstantTauScheduler",
            "bias" : True,
+           "heteroscedastic" : True,
 
-           "lower_bound" : -1.5,
-           "upper_bound" : 1.5,
+           "lower_bound" : -2.,
+           "upper_bound" : 0.,
 
            "uci_id" : 165,
-           "kl_loss" : True
+           "kl_loss" : True,
+           "hidden_dims": [20, 20], "n_hidden_layer": 2
            }
 
     # Get data
@@ -141,8 +151,7 @@ if __name__ == '__main__':
     train_loader, val_loader, test_loader, _ , _, _ = dataset_loader.generate_data()
 
     # Load model
-    model = eval(cfg["model"])(cfg)
-    model.to(device)
+    model = eval(cfg["model"])(cfg).to(device)
 
     for layer in model.model:
         if hasattr(layer, "weight_rho"):
@@ -156,7 +165,7 @@ if __name__ == '__main__':
             print(layer.bias)
             print("---")
 
-    criterion = nn.MSELoss()
+    criterion = nn.GaussianNLLLoss(full=True)
     optimizer = Adam(model.parameters(), lr = 1e-2)
 
     # Fit model
@@ -171,7 +180,7 @@ if __name__ == '__main__':
     )
 
     # Plot results
-    plot_history(history, "model")
+    plot_history(history, cfg["model"])
     plot_results(model, val_loader, device) # use only if 1D
 
     for layer in model.model:

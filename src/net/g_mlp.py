@@ -151,6 +151,7 @@ class G_MLP(BaseMLP):
             raise ValueError("'output_dim' must be specified.")
 
         n_hidden = cfg["n_hidden_layer"]
+        self.heteroscedastic = cfg["heteroscedastic"]
 
         # Normalize hidden_dims
         if isinstance(cfg["hidden_dims"], int):

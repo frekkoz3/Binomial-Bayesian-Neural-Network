@@ -11,9 +11,17 @@ import torch
 
 @torch.no_grad()
 def predictive_moments(model, x, n_samples, device):
-    """Mean and variance of `n_samples` repeated forward passes on `x`."""
+    """
+    Mean and variance of `n_samples` repeated forward passes on `x`.
+    """
     x = x.to(device)
     preds = torch.stack([model(x) for _ in range(n_samples)], dim=0)
+
+    # If heteroscedastic (outputs [mean, log_var]) variance of the sampled means (epistemic) + the average predicted variance (aleatoric).
+    if getattr(model, "heteroscedastic", False):
+        means, log_vars = preds.chunk(2, dim=-1)
+        return means.mean(dim=0), means.var(dim=0, unbiased=False) + log_vars.exp().mean(dim=0)
+
     return preds.mean(dim=0), preds.var(dim=0, unbiased=False)
 
 
