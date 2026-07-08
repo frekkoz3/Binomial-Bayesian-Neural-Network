@@ -23,7 +23,7 @@ from src.val.metrics import gaussian_nll, rmse
 
 def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, save_path: str):
     # Collect all unique bit-widths
-    bit_widths = sorted({row["bits"] for rows in results.values() for row in rows})
+    bit_widths = sorted({row["bits"] if row["bits"] else 32 for rows in results.values() for row in rows})
     models = list(results.keys())
 
     x = np.arange(len(bit_widths))
@@ -34,7 +34,7 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
     colors = [ "#2e7d4f", "#c5e1a5", "#8bc34a"]
 
     for i, model in enumerate(models):
-        if results[model]["bits"]:
+        if results[model][0]["bits"]:
             # Map bit-width -> metric
             metric_map = {row["bits"]: row[metric] for row in results[model]}
             values = [metric_map.get(b, np.nan) for b in bit_widths]
@@ -44,10 +44,10 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
                 values,
                 width=width,
                 label=model,
-                c=colors[i],
+                color=colors[i],
             )
         else:
-            plt.hlines(results[model][metric], x, style = "-", c=colors[i], label=f"Baseline - {model}")
+            plt.axhline(results[model][0][metric], xmin=np.min(x), xmax=np.max(x), linestyle = "--", color=colors[i], label=f"Baseline - {model}")
 
     plt.xticks(x, bit_widths)
     plt.xlabel("Bits used to store p")
@@ -64,7 +64,7 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     bit_widths = (32, 16, 8, 6, 4, 2)
-    epochs = 4000
+    epochs = 100
 
     dataset = UCIRegressionDataset(UCI_DATASETS["concrete"], batch_size=64)
     train_loader, val_loader, test_loader = dataset.generate_data()
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     results = {}
 
     # Baseline: G_MLP
-    for name, cls in [("G_MLP", G_MLP)]:
+    for name, cls in [("MLP", MLP)]:
         model = cls(shared_cfg).to(device)
         fit(model, train_loader, val_loader,
             optimizer=Adam(model.parameters(), lr=1e-3),
