@@ -40,30 +40,33 @@ def plot_variances(models: list, dataloader, names: list, device="cpu", save=Fal
     xs, ys = xs[idx], ys[idx]
 
     n_models = len(models)
-    # Adjusted figsize to be slightly wider per subplot for better text fitting
+
     fig, axes = plt.subplots(1, n_models, figsize=(5 * n_models, 5), sharey=True, dpi=300)
 
     if n_models == 1:
         axes = [axes]
 
+    y_stds = []
     for i, (model, ax, name) in enumerate(zip(models, axes, names)):
-        # 2. Compute mean theoretical variance E[V[w]]
-        vars_list = []
-        for module in model.modules():
-            rho = getattr(module, 'rho', getattr(module, 'weight_rho', None))
-            if isinstance(rho, torch.nn.Parameter):
-                p = torch.sigmoid(rho)
-                vars_list.append((module.N * p * (1 - p)).mean().item())
+        model.eval()  # Set model to evaluation mode
 
-        mean_var = sum(vars_list) / len(vars_list) if vars_list else 0.0
-
-        # 3. Monte Carlo predictions
-        model.train() # Force stochasticity on
-        preds = torch.stack([model(xs.unsqueeze(1).to(device)).squeeze().cpu() for _ in range(n_samples)])
+        # FIX 1: Ensure xs is on the correct device
+        # predictive_moments ALREADY returns the aggregated mean and variance!
+        y_mean_tensor, y_var_tensor = predictive_moments(
+            model,
+            xs.unsqueeze(1).to(device),
+            n_samples=n_samples,
+            device=device,
+        )
         model.eval()  # Restore state
 
-        y_mean = preds.mean(dim=0)
-        y_std = preds.std(dim=0)
+        # FIX 2: Do NOT call .mean(dim=0). Just squeeze to 1D.
+        y_mean = y_mean_tensor.squeeze().cpu()
+
+        # FIX 3: Convert the returned variance into standard deviation
+        y_std = torch.sqrt(torch.clamp(y_var_tensor, min=0)).squeeze().cpu()
+
+        y_stds.append(y_std.flatten())
 
         # 4. Plotting
         ax.fill_between(xs.numpy(), (y_mean - y_std).numpy(), (y_mean + y_std).numpy(),
@@ -74,11 +77,17 @@ def plot_variances(models: list, dataloader, names: list, device="cpu", save=Fal
         # Reduced scatter size (s=8) to prevent visual clutter
         ax.scatter(xs.numpy(), ys.numpy(), s=8, color="#2e7d4f", label="Ground truth", zorder=3)
 
-        # # 5. Strictly controlled Text and Label sizes
-        # text_str = r"$\mathbb{E}[\mathbb{V}\text{ }[w^{(i)}]] = " + f"{mean_var:.2f}$"
-        # ax.text(0.05, 0.95, text_str, transform=ax.transAxes, fontsize=11,
-        #         verticalalignment='top',
-        #         bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, edgecolor='#2e7d4f'))
+        # Mean of standard deviations for the text annotation
+        mean_var = y_std.mean().item()
+
+        # ---> PRINT THE MEAN STD TO CONSOLE <---
+        print(f"Mean y_std for {name}: {mean_var:.4f}")
+
+        # 5. Strictly controlled Text and Label sizes
+        text_str = r"$\mathbb{V}\text{ }[\tilde y]] = " + f"{mean_var:.2f}$"
+        ax.text(0.05, 0.95, text_str, transform=ax.transAxes, fontsize=11,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, edgecolor='#2e7d4f'))
 
         ax.set_xlabel("x", fontsize=11)
         if i == 0:
@@ -101,7 +110,7 @@ if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
     save = False
     # Setup some parameters
-    n_samples = 10000
+    n_samples = 500
     batch_size = 32
     input_dim = 1
     output_dim = 1
@@ -113,11 +122,11 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 10
+    n_epochs = 200
 
     name_models = ["BGA_MLP", "BGS_MLP"]
 
-    choices = torch.tensor(np.arange(-2, 2.1, 0.1), dtype=torch.float32)
+    choices = torch.tensor(np.arange(-4, 4.1, 0.1), dtype=torch.float32)
 
     histories = []
     models = []
@@ -143,7 +152,8 @@ if __name__ == "__main__":
                "minimum": -2,
                "maximum": 2,
                "sigma_squared":0.5,
-               "choices": choices
+               "choices": choices,
+               "normalize": False,
                }
 
         # Get data
@@ -184,7 +194,7 @@ if __name__ == "__main__":
             yaml.dump(cfg, f)
 
 
-    names = ["BGA with", "BGS with", "BGA without", "BGS without"]
+    names = ["BGA", "BGS"]
     run_folder = f"models/learned_var_{timestamp}"
     plot_variances(
         models=models,

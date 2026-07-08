@@ -34,7 +34,8 @@ def plot_histories(histories, names, save, path):
     alphas = [0.25, 0.5, 0.65, 0.85]
 
     # Training Losses
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(8, 5), facecolor='#f2faff')
+    plt.gca().set_facecolor('#f2faff')
 
     for i, history in enumerate(histories):
         plt.plot(history["train_loss"], label=f"Train - {names[i]}", color="#2e7d4f", alpha=alphas[i])
@@ -51,7 +52,8 @@ def plot_histories(histories, names, save, path):
         plt.savefig(img_path, dpi=600)
 
     # Validation Losses
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(8, 5), facecolor='#f2faff')
+    plt.gca().set_facecolor('#f2faff')
 
     for i, history in enumerate(histories):
         plt.plot(history["val_loss"], label=f"Val - {names[i]}", color="#2e7d4f", alpha=alphas[i])
@@ -203,7 +205,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 10
+    n_epochs = 20
 
     name_models = ["BGA_MLP", "BGS_MLP"]
 
@@ -214,7 +216,7 @@ if __name__ == "__main__":
         for model_name in name_models:
             # Move everything to config
             cfg = {"model": model_name,
-                   "dataset": "SinusoidData",
+                   "dataset": "SinusoidDataset",
                    "n_samples" : n_samples,
                    "input_dim" : input_dim,
                    "output_dim" : output_dim,

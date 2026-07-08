@@ -6,8 +6,7 @@ r"""
 ███████ ██████  ███████ ██   ████                                 
 """
 
-import torch
-import math
+from pathlib import Path
 from matplotlib import pyplot as plt
 from torch.distributions import Normal, Binomial
 
@@ -145,6 +144,8 @@ def plot_results(model, dataloader, device="cpu", save=False, path=None):
     if save:
         plt.savefig(path, dpi=600)
     plt.show()
+
+
 
 def plot_gumbel_softmax_approximation(N : int = 10, p : float = 0.2, n_samples : int = 1000, taus : list[float] = [0.01, 0.1, 1, 10] ):
     """
