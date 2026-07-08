@@ -31,17 +31,23 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
 
     plt.figure(figsize=(8, 5))
 
-    for i, model in enumerate(models):
-        # Map bit-width -> metric
-        metric_map = {row["bits"]: row[metric] for row in results[model]}
-        values = [metric_map.get(b, np.nan) for b in bit_widths]
+    colors = [ "#2e7d4f", "#c5e1a5", "#8bc34a"]
 
-        plt.bar(
-            x + (i - (len(models) - 1) / 2) * width,
-            values,
-            width=width,
-            label=model,
-        )
+    for i, model in enumerate(models):
+        if results[model]["bits"]:
+            # Map bit-width -> metric
+            metric_map = {row["bits"]: row[metric] for row in results[model]}
+            values = [metric_map.get(b, np.nan) for b in bit_widths]
+
+            plt.bar(
+                x + (i - (len(models) - 1) / 2) * width,
+                values,
+                width=width,
+                label=model,
+                c=colors[i],
+            )
+        else:
+            plt.hlines(results[model][metric], x, style = "-", c=colors[i], label=f"Baseline - {model}")
 
     plt.xticks(x, bit_widths)
     plt.xlabel("Bits used to store p")
@@ -58,7 +64,7 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     bit_widths = (32, 16, 8, 6, 4, 2)
-    epochs = 100
+    epochs = 4000
 
     dataset = UCIRegressionDataset(UCI_DATASETS["concrete"], batch_size=64)
     train_loader, val_loader, test_loader = dataset.generate_data()
@@ -66,7 +72,7 @@ if __name__ == "__main__":
     shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim, "hidden_dims": 50}
     results = {}
 
-    # Non-quantizable models: G_MLP
+    # Baseline: G_MLP
     for name, cls in [("G_MLP", G_MLP)]:
         model = cls(shared_cfg).to(device)
         fit(model, train_loader, val_loader,
@@ -75,7 +81,7 @@ if __name__ == "__main__":
 
         model_rmse = rmse(model, test_loader, device)
         model_nll = gaussian_nll(model, test_loader, device)
-        results[name] = [{"bits": bits, "rmse": model_rmse, "nll": model_nll} for bits in bit_widths]
+        results[name] = [{"bits": None, "rmse": model_rmse, "nll": model_nll}]
 
     # Quantizable models: BGA_MLP and BGS_MLP
     for name, cls, extra_cfg in [
