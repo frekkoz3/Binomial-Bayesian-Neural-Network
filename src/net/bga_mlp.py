@@ -101,6 +101,8 @@ class BinomialGaussianLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
+        self.kl = torch.tensor(0.)
+
         self.reset_parameters(d=in_features, o=out_features)
 
     def get_extra_state(self):
@@ -142,6 +144,20 @@ class BinomialGaussianLinear(nn.Module):
     def _expected_weight(self, p):
         return self.min_val + p * (self.max_val - self.min_val)
 
+    def _kl(self, p, q):
+        """
+            Compute analytical KL between two binomials using the fact that 
+            KL(Bin(N, p)|Bin(N, q)) = N * KL(Bernoulli(p)|Bernoulli(q))
+        """
+        kl = self.N * (
+            p * torch.log(p / q)
+            + (1 - p) * torch.log((1 - p) / (1 - q))
+        )
+
+        kl_loss = kl.sum()
+
+        return kl_loss
+
     def forward(self, x):
 
         if self.mode == Mode.INFERENCE:
@@ -167,6 +183,8 @@ class BinomialGaussianLinear(nn.Module):
         w = w + (w_round - w).detach()
 
         w = self.min_val + (self.max_val - self.min_val) * (w / self.N)
+
+        self.kl = self._kl(p, torch.ones_like(p.clone().detach()) * 0.5)
 
         return F.linear(x, w, self.bias)
     
@@ -365,7 +383,14 @@ class BGA_MLP(BaseMLP):
             if hasattr(layer, "resolution"):
                 layer.resolution = resolution
 
+    def kl_loss(self):
+        kl = 0.
 
+        for module in self.modules():
+            if isinstance(module, BinomialGaussianLinear):
+                kl += module.kl
+
+        return kl
 
 if __name__ == '__main__':
 

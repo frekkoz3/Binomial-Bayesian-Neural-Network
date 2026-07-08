@@ -319,6 +319,20 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
     def _expected_weight(self, p):
         """Compute the expected weight value given the probability p"""
         return self.min_val + (self.max_val - self.min_val) * p / self.N
+    
+    def _kl(self, p, q):
+        """
+            Compute analytical KL between two binomials using the fact that 
+            KL(Bin(N, p)|Bin(N, q)) = N * KL(Bernoulli(p)|Bernoulli(q))
+        """
+        kl = self.N * (
+            p * torch.log(p / q)
+            + (1 - p) * torch.log((1 - p) / (1 - q))
+        )
+
+        kl_loss = kl.sum()
+
+        return kl_loss
 
 
     def forward_param(self, param):
@@ -364,6 +378,10 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         # b = self.forward_param(self.bias) if self.bias is not None else None
 
         b = self.bias if self.bias is not None else None
+
+        eps = 1e-6
+
+        self.kl = self._kl(torch.sigmoid(self.rho).clamp(eps, 1 - eps), torch.ones_like(self.rho)*0.5)
 
         return F.linear(x, w, b)
 
@@ -490,6 +508,15 @@ class BGS_MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+    def kl_loss(self):
+        kl = 0.
+
+        for module in self.modules():
+            if isinstance(module, BinomialGumbelSoftmaxLinear):
+                kl += module.kl
+
+        return kl
 
 
 
