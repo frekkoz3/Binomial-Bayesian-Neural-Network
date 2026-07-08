@@ -64,7 +64,6 @@ class GaussianLinear(nn.Module):
             torch.empty(out_features, in_features)
         )
 
-        # Unconstrained parameter -> sigma = softplus(rho)
         self.weight_rho = nn.Parameter(
             torch.empty(out_features, in_features)
         )
@@ -93,11 +92,7 @@ class GaussianLinear(nn.Module):
             nn.init.constant_(self.bias_rho, -5.)
 
     def _gaussian_kl(self, mu_q, sigma_q, mu_p, sigma_p):
-        """
-            Closed form for the kl divergence between two gaussians
-            KL(N(mu_q, sigma_q)|N(mu_p, sigma_p))
-            where q is the variational and p is the prior
-        """
+        """Closed form for the kl divergence between two gaussians"""
         return (
             torch.log(sigma_p / sigma_q)
             + (sigma_q**2 + (mu_q - mu_p)**2) / (2 * sigma_p**2)
@@ -110,15 +105,16 @@ class GaussianLinear(nn.Module):
 
         eps_w = torch.randn_like(weight_sigma)
         weight = self.weight_mu + weight_sigma * eps_w
+
         if self.training:
-            self.kl = self._gaussian_kl(weight, mu1=self.weight_mu, sigma1=weight_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
+            self.kl = self._gaussian_kl(mu_q=self.weight_mu, sigma_q=weight_sigma, mu_p=self.prior_mu, sigma_p=self.prior_sigma).sum()
 
         if self.bias_mu is not None:
             bias_sigma = F.softplus(self.bias_rho)
             eps_b = torch.randn_like(bias_sigma)
             bias = self.bias_mu + bias_sigma * eps_b
             if self.training:
-                self.kl = self.kl + self._gaussian_kl(bias, mu1=self.bias_mu, sigma1=bias_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
+                 self.kl = self.kl + self._gaussian_kl(mu_q=self.bias_mu, sigma_q=bias_sigma, mu_p=self.prior_mu, sigma_p=self.prior_sigma).sum()
         else:
             bias = None
 
@@ -198,9 +194,6 @@ class G_MLP(BaseMLP):
         return self.model(x)
     
     def kl_loss(self):
-        if not self.training:
-            return 0.0
-        
         kl = 0.
 
         for module in self.modules():
