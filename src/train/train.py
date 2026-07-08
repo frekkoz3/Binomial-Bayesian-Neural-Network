@@ -113,11 +113,11 @@ if __name__ == '__main__':
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 10
+    n_epochs = 1000
 
     # Move everything to config
     cfg = {"model": "BGS_MLP",
-           "dataset": "SinusoidGapData",
+           "dataset": "SinusoidData",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : output_dim,
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     )
 
     # Plot results
-    plot_history(history)
+    plot_history(history, "model")
     plot_results(model, val_loader, device) # use only if 1D
 
     for layer in model.model:

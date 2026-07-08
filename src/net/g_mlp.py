@@ -92,37 +92,29 @@ class GaussianLinear(nn.Module):
             nn.init.zeros_(self.bias_mu)
             nn.init.constant_(self.bias_rho, -5.)
 
-    def _log_prob(self, value, mu, sigma):
-        """if isinstance(mu, float):
-            mu = torch.ones_like(value)*mu
-        if isinstance(sigma, float):
-            sigma = torch.ones_like(value)*sigma"""
-            
+    def _gaussian_kl(self, mu_q, sigma_q, mu_p, sigma_p):
+        """
+            Closed form for the kl divergence between two gaussians
+        """
         return (
-            -torch.log(sigma)
-            - 0.5 * torch.log(LOG_2PI)
-            - (value - mu) ** 2 / (2 * sigma ** 2)
-        ).sum()
-
-    def _sample_kl(self, value, mu1, sigma1, mu2, sigma2, direct : bool = True):
-        if direct:
-            return self._log_prob(value, mu1, sigma1) - self._log_prob(value, mu2, sigma2)
-        else:
-            return - self._log_prob(value, mu1, sigma1) + self._log_prob(value, mu2, sigma2)
-
+            torch.log(sigma_p / sigma_q)
+            + (sigma_q**2 + (mu_q - mu_p)**2) / (2 * sigma_p**2)
+            - 0.5
+        )
+    
     def forward(self, x):
 
         weight_sigma = F.softplus(self.weight_rho)
 
         eps_w = torch.randn_like(weight_sigma)
         weight = self.weight_mu + weight_sigma * eps_w
-        self.kl = self._sample_kl(weight, mu1=self.weight_mu, sigma1=weight_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
+        self.kl = self._gaussian_kl(weight, mu1=self.weight_mu, sigma1=weight_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
 
         if self.bias_mu is not None:
             bias_sigma = F.softplus(self.bias_rho)
             eps_b = torch.randn_like(bias_sigma)
             bias = self.bias_mu + bias_sigma * eps_b
-            self.kl = self.kl + self._sample_kl(bias, mu1=self.bias_mu, sigma1=bias_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
+            self.kl = self.kl + self._gaussian_kl(bias, mu1=self.bias_mu, sigma1=bias_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
         else:
             bias = None
 
