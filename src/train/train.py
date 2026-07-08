@@ -38,7 +38,7 @@ def train(model : BaseMLP,
         out = model(x)
         loss = criterion(out, y)
 
-        beta = beta = 1 / len(loader)
+        beta = 1 / 10*len(loader)
 
         reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
         kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
@@ -67,9 +67,9 @@ def evaluate(model : BaseMLP,
 
         beta = 1 / len(loader)
 
-        reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
-        kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
-        loss = criterion(out, y) + reg_loss + kl_loss
+        # reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
+        # kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
+        loss = criterion(out, y) # + reg_loss + kl_loss we do not show them in the evaluation
         total_loss += loss.item()
 
     return total_loss / len(loader)
@@ -132,7 +132,8 @@ if __name__ == '__main__':
            "lower_bound" : -1.5,
            "upper_bound" : 1.5,
 
-           "uci_id" : 165
+           "uci_id" : 165,
+           "kl_loss" : True
            }
 
     # Get data
@@ -147,6 +148,9 @@ if __name__ == '__main__':
         if hasattr(layer, "weight_rho"):
             print("weights")
             print(torch.sigmoid(layer.weight_rho))
+        if hasattr(layer, "rho"):
+            print("weights")
+            print(torch.sigmoid(layer.rho))
         if hasattr(layer, "bias"):
             print("bias")
             print(layer.bias)
@@ -174,6 +178,9 @@ if __name__ == '__main__':
         if hasattr(layer, "weight_rho"):
             print("weights")
             print(torch.sigmoid(layer.weight_rho))
+        if hasattr(layer, "rho"):
+            print("weights")
+            print(torch.sigmoid(layer.rho))
         if hasattr(layer, "bias"):
             print("bias")
             print(layer.bias)

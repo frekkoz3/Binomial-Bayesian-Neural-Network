@@ -74,7 +74,8 @@ class BinomialGaussianLinear(nn.Module):
                  max_val : int = 5,
                  N : int = 50,
                  bias=True,
-                 resolution : int = 8):
+                 resolution : int = 8,
+                 kl_loss : bool = False):
         """
             Notes : resolution parameters is related to the number of bit to use for storing the p parameters.
         """
@@ -101,6 +102,7 @@ class BinomialGaussianLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
+        self.kl_loss = kl_loss
         self.kl = torch.tensor(0.)
 
         self.reset_parameters(d=in_features, o=out_features)
@@ -184,7 +186,8 @@ class BinomialGaussianLinear(nn.Module):
 
         w = self.min_val + (self.max_val - self.min_val) * (w / self.N)
 
-        self.kl = self._kl(p, torch.ones_like(p.clone().detach()) * 0.5)
+        if self.training and self.kl_loss:
+            self.kl = self._kl(p, torch.ones_like(p.clone().detach()) * 0.5)
 
         return F.linear(x, w, self.bias)
     
@@ -303,7 +306,8 @@ class BGA_MLP(BaseMLP):
                                             max_val=cfg["max_val"],
                                             N=cfg["N"],
                                             bias=cfg["bias"],
-                                            resolution=cfg["resolution"]
+                                            resolution=cfg["resolution"],
+                                            kl_loss = cfg.get("kl_loss", False)
                                         )
                                         )
             
@@ -320,7 +324,9 @@ class BGA_MLP(BaseMLP):
                                              min_val=cfg["min_val"],
                                              max_val=cfg["max_val"],
                                              N=cfg["N"],
-                                             bias=cfg["bias"])
+                                             bias=cfg["bias"],
+                                             kl_loss = cfg.get("kl_loss", False)
+                                             )
                         )
 
         self.avg_inference = False
@@ -384,6 +390,9 @@ class BGA_MLP(BaseMLP):
                 layer.resolution = resolution
 
     def kl_loss(self):
+        if not self.training:
+            return 0.0
+        
         kl = 0.
 
         for module in self.modules():

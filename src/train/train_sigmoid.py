@@ -24,6 +24,7 @@ from src.train.train import *
 
 
 if __name__ == "__main__":
+
     timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
     save = True
     # Setup some parameters
@@ -43,10 +44,12 @@ if __name__ == "__main__":
 
     models = ["BGA_MLP", "BGS_MLP", "G_MLP", "MLP"]
 
+    dt_type = "SinusoidData"
+
     for model_name in models:
         # Move everything to config
         cfg = {"model": model_name,
-               "dataset": "SinusoidData",
+               "dataset": dt_type,
                "n_samples" : n_samples,
                "input_dim" : input_dim,
                "output_dim" : output_dim,
@@ -84,7 +87,7 @@ if __name__ == "__main__":
             device=device,
         )
 
-        run_folder = f"models/{timestamp}/{model_name.lower()}"
+        run_folder = f"models/{dt_type}/{timestamp}/{model_name.lower()}"
         if not os.path.exists(run_folder):
             os.makedirs(run_folder, exist_ok=True)
 

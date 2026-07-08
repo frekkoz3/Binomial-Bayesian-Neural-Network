@@ -158,7 +158,8 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
                  tau_scheduler : str | None = None,
                  tau_parameters : dict | None = None,
                  resolution : int = 8,
-                 bias : bool = True):
+                 bias : bool = True,
+                 kl_loss : bool = False):
         super().__init__()
 
         self.min_val = min_val
@@ -179,6 +180,9 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.register_buffer("bias_p", None)
 
         self._reset_parameters(d=in_features, o=out_features)
+
+        self.kl_loss = kl_loss
+        self.kl = torch.tensor(0.)
 
         # Log Combinations for Binomial Distribution:
         # log(N!) - log(k!) - log((N-k)!)
@@ -381,7 +385,8 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
 
         eps = 1e-6
 
-        self.kl = self._kl(torch.sigmoid(self.rho).clamp(eps, 1 - eps), torch.ones_like(self.rho)*0.5)
+        if self.training and self.kl_loss:
+            self.kl = self._kl(torch.sigmoid(self.rho).clamp(eps, 1 - eps), torch.ones_like(self.rho)*0.5)
 
         return F.linear(x, w, b)
 
@@ -422,7 +427,8 @@ class BGS_MLP(nn.Module):
                                                       N=cfg["N"],
                                                       bias = cfg["bias"],
                                                       tau_scheduler=cfg.get("tau_scheduler", None),
-                                                      tau_parameters=cfg.get("tau_parameters", None)) )
+                                                      tau_parameters=cfg.get("tau_parameters", None),
+                                                      kl_loss = cfg.get("kl_loss", False))  )
             layers.append(ACTIVATIONS[activation]())
             input_dims = hidden_dim
 
@@ -433,7 +439,8 @@ class BGS_MLP(nn.Module):
                                                    N=cfg["N"],
                                                    bias = cfg["bias"],
                                                    tau_scheduler=cfg.get("tau_scheduler", None),
-                                                   tau_parameters=cfg.get("tau_parameters", None)) )
+                                                   tau_parameters=cfg.get("tau_parameters", None),
+                                                   kl_loss = cfg.get("kl_loss", False)) )
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
 
@@ -510,6 +517,9 @@ class BGS_MLP(nn.Module):
         return self.model(x)
     
     def kl_loss(self):
+        if not self.training:
+            return 0.0
+        
         kl = 0.
 
         for module in self.modules():

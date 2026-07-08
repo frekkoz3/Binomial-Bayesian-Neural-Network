@@ -95,6 +95,8 @@ class GaussianLinear(nn.Module):
     def _gaussian_kl(self, mu_q, sigma_q, mu_p, sigma_p):
         """
             Closed form for the kl divergence between two gaussians
+            KL(N(mu_q, sigma_q)|N(mu_p, sigma_p))
+            where q is the variational and p is the prior
         """
         return (
             torch.log(sigma_p / sigma_q)
@@ -108,13 +110,15 @@ class GaussianLinear(nn.Module):
 
         eps_w = torch.randn_like(weight_sigma)
         weight = self.weight_mu + weight_sigma * eps_w
-        self.kl = self._gaussian_kl(weight, mu1=self.weight_mu, sigma1=weight_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
+        if self.training:
+            self.kl = self._gaussian_kl(weight, mu1=self.weight_mu, sigma1=weight_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
 
         if self.bias_mu is not None:
             bias_sigma = F.softplus(self.bias_rho)
             eps_b = torch.randn_like(bias_sigma)
             bias = self.bias_mu + bias_sigma * eps_b
-            self.kl = self.kl + self._gaussian_kl(bias, mu1=self.bias_mu, sigma1=bias_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
+            if self.training:
+                self.kl = self.kl + self._gaussian_kl(bias, mu1=self.bias_mu, sigma1=bias_sigma, mu2=self.prior_mu, sigma2=self.prior_sigma)
         else:
             bias = None
 
@@ -194,6 +198,9 @@ class G_MLP(BaseMLP):
         return self.model(x)
     
     def kl_loss(self):
+        if not self.training:
+            return 0.0
+        
         kl = 0.
 
         for module in self.modules():

@@ -92,7 +92,7 @@ if __name__ == "__main__":
             device=device,
         )
 
-        run_folder = f"models/{timestamp}/{model_name.lower()}"
+        run_folder = f"models/UCI_{uci_id}/{timestamp}/{model_name.lower()}"
         if not os.path.exists(run_folder):
             os.makedirs(run_folder, exist_ok=True)
 
