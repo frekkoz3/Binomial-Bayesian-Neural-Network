@@ -42,7 +42,7 @@ class Dataset:
         pass
 
 
-    def generate_data(self, minimum : float = -4., maximum : float = 4., gausianizzation: bool = False):
+    def generate_data(self, minimum : float = -4., maximum : float = 4., gausianizzation: bool = False, *args, **kwargs):
         x = (maximum - minimum) * torch.rand(size=(self.n_samples, self.input_dim)) + minimum
         y = self._function(x)
         dataset = TensorDataset(x, y)
@@ -82,7 +82,7 @@ class DiscreteNoisyDataset(Dataset):
         return y
 
 
-    def generate_data(self):
+    def generate_data(self, *args, **kwargs):
         idx = torch.randint(0, len(self.choices), (self.n_samples, self.input_dim))
         x = torch.tensor(self.choices)[idx]
         y = self._function(x)
@@ -99,7 +99,7 @@ class DiscreteNoisyDataset(Dataset):
         return train_loader, val_loader, test_loader, train_data, val_data, test_data
 
 
-class SinusoidData(Dataset):
+class SinusoidDataset(Dataset):
     """
     Sum of sinusoid data
         sin(x)+ 0.5 sin(2x) + 0.25 x^2
@@ -125,7 +125,7 @@ class SinusoidData(Dataset):
 
 
 
-class SinusoidGapData(Dataset):
+class SinusoidGapDataset(Dataset):
     """
     Sum of sinusoid data with a gap in [LowerBound, UpperBound], meaning that all the samples are outside this range
         sin(x)+ 0.5 sin(2x) + 0.25 x^2
@@ -176,6 +176,29 @@ class SinusoidGapData(Dataset):
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=self.shuffle) if self.test_size > 0 else None
 
         return train_loader, val_loader, test_loader, train_data, val_data, test_data
+
+
+
+class BellDataset(Dataset):
+    """
+    Simple Bell curve, useful to understand the behaviour in the tails:
+
+        exp(-x^2)
+    """
+    def __init__(self,
+                 n_samples,
+                 train_prop,
+                 val_prop,
+                 batch_size,
+                 input_dim,
+                 shuffle,
+                 *args,
+                 **kwargs):
+        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle, *args, **kwargs)
+
+    def _function(self, x):
+        y = torch.exp(-x**2)
+        return y
 
 
 
