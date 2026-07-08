@@ -78,7 +78,7 @@ class DiscreteNoisyDataset(Dataset):
 
     def _function(self, x):
         noise = torch.randn(x.shape) * self.sigma_squared
-        y = x + noise
+        y = x**2 + x + noise
         return y
 
 
@@ -87,7 +87,7 @@ class DiscreteNoisyDataset(Dataset):
         x = torch.tensor(self.choices)[idx]
         y = self._function(x)
 
-        y = torch.nn.functional.normalize(y, dim = 0)
+        y = torch.nn.functional.normalize(y, dim = 0) if kwargs["normalize"] else y
 
         dataset = TensorDataset(x, y)
 
@@ -197,7 +197,30 @@ class BellDataset(Dataset):
         super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle, *args, **kwargs)
 
     def _function(self, x):
-        y = torch.exp(-x**2)
+        y = 3*torch.exp(-x**2)
+        return y
+
+
+
+class SigmoidDataset(Dataset):
+    """
+    Simple Sigmoid curve, useful to understand the behaviour in the tails:
+
+        1/(1+exp(-x))
+    """
+    def __init__(self,
+                 n_samples,
+                 train_prop,
+                 val_prop,
+                 batch_size,
+                 input_dim,
+                 shuffle,
+                 *args,
+                 **kwargs):
+        super().__init__(n_samples, train_prop, val_prop, batch_size, input_dim, shuffle, *args, **kwargs)
+
+    def _function(self, x):
+        y = 1/(1+torch.exp(4*x + 7.2))
         return y
 
 
