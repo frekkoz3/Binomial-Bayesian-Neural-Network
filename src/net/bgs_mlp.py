@@ -159,7 +159,9 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
                  tau_parameters : dict | None = None,
                  resolution : int = 8,
                  bias : bool = True,
-                 kl_loss : bool = False):
+                 weight_init : bool = True,
+                 kl_loss : bool = False
+                 ):
         super().__init__()
 
         self.min_val = min_val
@@ -179,12 +181,12 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.register_buffer("weight_p", None)
         self.register_buffer("bias_p", None)
 
-        self._reset_parameters(d=in_features, o=out_features)
+        self._reset_parameters(d=in_features, o=out_features, weight_init=weight_init)
 
         self.kl_loss = kl_loss
         self.kl = torch.tensor(0.)
 
-        # Log Combinations for Binomial Distribution:
+        # Precompute Log Combinations for Binomial Distribution:
         # log(N!) - log(k!) - log((N-k)!)
         k_tensor = torch.arange(self.N + 1, dtype=torch.float32)
         log_comb = torch.lgamma(torch.tensor(self.N + 1.0)) - torch.lgamma(k_tensor + 1.0) - torch.lgamma(self.N - k_tensor + 1.0)
@@ -193,12 +195,14 @@ class BinomialGumbelSoftmaxLinear(nn.Module):
         self.register_buffer("log_comb_view", log_comb.view(-1, 1, 1))
 
 
-    def _reset_parameters(self, d : int = None, o : int = None):
+    def _reset_parameters(self, d : int = None, o : int = None, weight_init : bool = True):
         """Initialize the learnable parameters"""
         std_sx = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
         std_dx = math.sqrt(weight_initialization(self.N, o, self.max_val, self.min_val))
         std = (std_sx + std_dx) / 2
-        print(f"Std SX: {std_sx}, Std DX: {std_dx}, Avg Std: {std}")
+
+        std = std if weight_init is True else 1.
+
         nn.init.normal_(self.rho, std = std)
         nn.init.normal_(self.bias, std = std)
 
@@ -428,6 +432,7 @@ class BGS_MLP(nn.Module):
                                                       bias = cfg["bias"],
                                                       tau_scheduler=cfg.get("tau_scheduler", None),
                                                       tau_parameters=cfg.get("tau_parameters", None),
+                                                      weight_init=cfg.get("weight_init", True),
                                                       kl_loss = cfg.get("kl_loss", False))  )
             layers.append(ACTIVATIONS[activation]())
             input_dims = hidden_dim
@@ -440,7 +445,9 @@ class BGS_MLP(nn.Module):
                                                    bias = cfg["bias"],
                                                    tau_scheduler=cfg.get("tau_scheduler", None),
                                                    tau_parameters=cfg.get("tau_parameters", None),
-                                                   kl_loss = cfg.get("kl_loss", False)) )
+                                                   kl_loss = cfg.get("kl_loss", False),
+                                                   weight_init=cfg.get("weight_init", True)) )
+
         self.model = nn.Sequential(*layers)
         self.to(cfg["device"])
 
@@ -519,7 +526,7 @@ class BGS_MLP(nn.Module):
     def kl_loss(self):
         if not self.training:
             return 0.0
-        
+
         kl = 0.
 
         for module in self.modules():

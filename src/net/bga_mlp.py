@@ -75,7 +75,9 @@ class BinomialGaussianLinear(nn.Module):
                  N : int = 50,
                  bias=True,
                  resolution : int = 8,
-                 kl_loss : bool = False):
+                 weight_init : bool = True,
+                 kl_loss : bool = False
+                 ):
         """
             Notes : resolution parameters is related to the number of bit to use for storing the p parameters.
         """
@@ -105,7 +107,7 @@ class BinomialGaussianLinear(nn.Module):
         self.kl_loss = kl_loss
         self.kl = torch.tensor(0.)
 
-        self.reset_parameters(d=in_features, o=out_features)
+        self.reset_parameters(d=in_features, o=out_features, weight_init=weight_init)
 
     def get_extra_state(self):
         return {
@@ -132,11 +134,14 @@ class BinomialGaussianLinear(nn.Module):
         """
         self.saving_mode = mode
 
-    def reset_parameters(self, d : int | None = None, o : int | None = None):
+    def reset_parameters(self, d : int | None = None, o : int | None = None, weight_init : bool = True):
         #nn.init.ones_(self.weight_rho)
         std_sx = math.sqrt(weight_initialization(self.N, d, self.max_val, self.min_val))
         std_dx = math.sqrt(weight_initialization(self.N, o, self.max_val, self.min_val))
         std = (std_sx + std_dx) / 2
+
+        std = std if weight_init is True else 1.
+
         nn.init.normal_(self.weight_rho, std=std)
         print(f"Std SX: {std_sx}, Std DX: {std_dx}, Avg Std: {std}")
 
@@ -307,9 +312,8 @@ class BGA_MLP(BaseMLP):
                                             N=cfg["N"],
                                             bias=cfg["bias"],
                                             resolution=cfg["resolution"],
-                                            kl_loss = cfg.get("kl_loss", False)
-                                        )
-                                        )
+                                            weight_init=cfg.get("weight_init", True),
+                                            kl_loss = cfg.get("kl_loss", False) ))
             
             # print(f"optimal std for layer {i}: {math.sqrt(weight_initialization(n=cfg["N"], n_i=in_dim, max_val=cfg["max_val"],min_val=cfg["min_val"]))}")
 
@@ -325,9 +329,8 @@ class BGA_MLP(BaseMLP):
                                              max_val=cfg["max_val"],
                                              N=cfg["N"],
                                              bias=cfg["bias"],
-                                             kl_loss = cfg.get("kl_loss", False)
-                                             )
-                        )
+                                             kl_loss = cfg.get("kl_loss", False),
+                                             weight_init=cfg.get("weight_init", True) ))
 
         self.avg_inference = False
 
@@ -392,7 +395,7 @@ class BGA_MLP(BaseMLP):
     def kl_loss(self):
         if not self.training:
             return 0.0
-        
+
         kl = 0.
 
         for module in self.modules():
