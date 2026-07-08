@@ -30,7 +30,7 @@ def plot_dataset_vs_metric(results: dict[str, list[dict]], metric: str, save_pat
 
     plt.figure(figsize=(8, 5))
 
-    colors = [ "#2e7d4f", "#c5e1a5", "#8bc34a"]
+    colors = [ "#2e7d4f", "#c5e1a5", "#8bc34a", "#5e910d"]
 
     for i, model in enumerate(models):
         # Map dataset -> metric
@@ -74,6 +74,7 @@ if __name__ == "__main__":
 
         # Model loop
         for name, cls, extra_cfg in [
+            ("MLP", MLP, {}),
             ("G_MLP", G_MLP, {}),
             ("BGA_MLP", BGA_MLP, {"N": 50}),
             ("BGS_MLP", BGS_MLP, {"N": 50, "tau_scheduler": "ExponentialTauScheduler", "device": device}),
