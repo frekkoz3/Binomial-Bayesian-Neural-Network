@@ -23,7 +23,7 @@ from src.val.metrics import gaussian_nll, rmse
 
 def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, save_path: str):
     # Collect all unique bit-widths
-    bit_widths = sorted({row["bits"] for rows in results.values() for row in rows})
+    bit_widths = sorted({row["bits"] if row["bits"] else 32 for rows in results.values() for row in rows})
     models = list(results.keys())
 
     x = np.arange(len(bit_widths))
@@ -31,17 +31,23 @@ def plot_quantization_vs_metric(results: dict[str, list[dict]], metric: str, sav
 
     plt.figure(figsize=(8, 5))
 
-    for i, model in enumerate(models):
-        # Map bit-width -> metric
-        metric_map = {row["bits"]: row[metric] for row in results[model]}
-        values = [metric_map.get(b, np.nan) for b in bit_widths]
+    colors = [ "#2e7d4f", "#c5e1a5", "#8bc34a"]
 
-        plt.bar(
-            x + (i - (len(models) - 1) / 2) * width,
-            values,
-            width=width,
-            label=model,
-        )
+    for i, model in enumerate(models):
+        if results[model][0]["bits"]:
+            # Map bit-width -> metric
+            metric_map = {row["bits"]: row[metric] for row in results[model]}
+            values = [metric_map.get(b, np.nan) for b in bit_widths]
+
+            plt.bar(
+                x + (i - (len(models) - 1) / 2) * width,
+                values,
+                width=width,
+                label=model,
+                color=colors[i],
+            )
+        else:
+            plt.axhline(results[model][0][metric], xmin=np.min(x), xmax=np.max(x), linestyle = "--", color=colors[i], label=f"Baseline - {model}")
 
     plt.xticks(x, bit_widths)
     plt.xlabel("Bits used to store p")
@@ -66,8 +72,8 @@ if __name__ == "__main__":
     shared_cfg = {"input_dim": dataset.input_dim, "output_dim": dataset.output_dim, "hidden_dims": 50}
     results = {}
 
-    # Non-quantizable models: G_MLP
-    for name, cls in [("G_MLP", G_MLP)]:
+    # Baseline: G_MLP
+    for name, cls in [("MLP", MLP)]:
         model = cls(shared_cfg).to(device)
         fit(model, train_loader, val_loader,
             optimizer=Adam(model.parameters(), lr=1e-3),
@@ -75,7 +81,7 @@ if __name__ == "__main__":
 
         model_rmse = rmse(model, test_loader, device)
         model_nll = gaussian_nll(model, test_loader, device)
-        results[name] = [{"bits": bits, "rmse": model_rmse, "nll": model_nll} for bits in bit_widths]
+        results[name] = [{"bits": None, "rmse": model_rmse, "nll": model_nll}]
 
     # Quantizable models: BGA_MLP and BGS_MLP
     for name, cls, extra_cfg in [

@@ -67,9 +67,9 @@ def evaluate(model : BaseMLP,
 
         beta = 1 / len(loader)
 
-        # reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
-        # kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
-        loss = criterion(out, y) # + reg_loss + kl_loss we do not show them in the evaluation
+        reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
+        kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
+        loss = criterion(out, y) + reg_loss + kl_loss
         total_loss += loss.item()
 
     return total_loss / len(loader)
