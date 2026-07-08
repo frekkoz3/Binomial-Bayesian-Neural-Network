@@ -42,7 +42,7 @@ def train(model : BaseMLP,
         else:
             loss = criterion(out, y)
 
-        beta = 1 / 10*len(loader)
+        beta = 1 / (10*len(loader))
 
         reg_loss = model.regularization_loss() if hasattr(model, "regularization_loss") else 0.0
         kl_loss = beta*model.kl_loss() if hasattr(model, "kl_loss") else 0.0
