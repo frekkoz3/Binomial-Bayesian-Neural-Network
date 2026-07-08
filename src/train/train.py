@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     # Move everything to config
     cfg = {"model": "BGS_MLP",
-           "dataset": "SinusoidData",
+           "dataset": "SinusoidDataset",
            "n_samples" : n_samples,
            "input_dim" : input_dim,
            "output_dim" : 2 * output_dim,
