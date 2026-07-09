@@ -15,7 +15,32 @@ What began as an exploration of memory-efficient Bayesian models soon evolved in
 The 2B2N project is therefore both an investigation into a novel Bayesian neural network architecture and an exploration of the trade-offs between representational simplicity, memory efficiency, and predictive uncertainty.
 
 ## Repository Structure
-
-## Formulation
+```bash
+├─── docs/                    # Notes and References      
+│    └─── notes.md            # Mathematical formulation and derivations of the 2B2N model
+├─── models/                  # Trained models
+├─── plots/                   # Plots and images used in the presentation
+├─── src/                     # Source code
+│    ├─── data/               # Dataset loading and preprocessing 
+│    ├─── exp/                # Experimentation scripts. See files for details
+│    ├─── net/                # Neural network architecture and layers
+│    ├─── train/              # Training scripts
+│    ├─── val/                # Validation scripts
+│    └─── vis/                # Visualization tools
+├─── .gitignore
+├─── requirements.txt
+└─── README.md
+```
 
 ## Quick Setup
+Just install requirements and go!
+
+```bash
+pip install -r requirements.txt
+```
+
+To run a training session, simply adapt the configuration directly in `src/train/train.py` and execute the following command from terminal:
+
+```bash
+python -m src.train.train
+```
