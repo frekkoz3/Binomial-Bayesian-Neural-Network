@@ -44,3 +44,17 @@ To run a training session, simply adapt the configuration directly in `src/train
 ```bash
 python -m src.train.train
 ```
+
+
+## Experiments
+The section presents a brief description of the experiments conducted on 2B2N architecture. 
+All the scripts are located in the `src/exp` folder.
+
+- `gap_behavior`: The goal of the experiment is to compare the behavior of different 2B2N architectures on a dataset with a gap in the middle of the input space.
+  The models are trained without data in the gap, but evaluated on the whole input space. The experiment is useful to understand the generalization properties of the models and the behavior of the variance out of distribution.
+- `impact_initialization`: The goal of the experiment is to analyze the impact of starting with a variance on the weights that is wide
+  enough to allow effective learning but small enough to avoid the spread of the prediction variance. The experiment compares the behavior of 2B2N models with and without our weight initialization. The dataset used is a simple sinusoidal function.
+- `learned_var`: The goal of the experiment is to spot any similarity between the intrinsic variance of the dataset and the one of the models' predictions. The dataset used is a simple sinusoidal function.
+- `quant`: The goal of the experiment is to compare the behavior of 2B2N architectures given different weights quantization techniques. The models are trained in 32-bit precision and evaluated at different bit-widths.
+- `tail_<NameDataset>_behavior`: The goal of the experiment is to compare the behavior of B2N architectures on the extremes of the input space.
+  The dataset used here consists of samples from a `<NameDataset>` function: a gaussian bell, a sigmoid and a sinusoidal function.
