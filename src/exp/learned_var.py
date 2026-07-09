@@ -6,6 +6,12 @@
 ███████ ██████  ███████ ██   ████
 """
 
+"""
+The goal of the experiment is to spot any similarity between the intrinsic variance of the dataset and the one of the models' predictions. 
+
+The dataset used is a simple sinusoidal function.
+"""
+
 from torch.optim import Optimizer, Adam, AdamW
 import argparse
 import yaml

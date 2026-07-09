@@ -40,11 +40,11 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 1000
+    n_epochs = 20
 
     models = ["BGA_MLP", "BGS_MLP", "G_MLP", "MLP"]
 
-    dt_type = "SinusoidData"
+    dt_type = "SinusoidDataset"
 
     for model_name in models:
         # Move everything to config
