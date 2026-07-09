@@ -1,0 +1,41 @@
+batch_size: 32
+bias: true
+choices: !!python/object/apply:torch._utils._rebuild_tensor_v2
+- !!python/object/apply:torch.storage._load_from_bytes
+  - !!binary |
+    gAKKCmz8nEb5IGqoUBkugAJN6QMugAJ9cQAoWBAAAABwcm90b2NvbF92ZXJzaW9ucQFN6QNYDQAA
+    AGxpdHRsZV9lbmRpYW5xAohYCgAAAHR5cGVfc2l6ZXNxA31xBChYBQAAAHNob3J0cQVLAlgDAAAA
+    aW50cQZLBFgEAAAAbG9uZ3EHSwR1dS6AAihYBwAAAHN0b3JhZ2VxAGN0b3JjaApGbG9hdFN0b3Jh
+    Z2UKcQFYDQAAADI0ODQ1NDU2MzU0MjRxAlgDAAAAY3B1cQNLUU50cQRRLoACXXEAWA0AAAAyNDg0
+    NTQ1NjM1NDI0cQFhLlEAAAAAAAAAAACAwJqZecAzM3PAzcxswGZmZsAAAGDAmplZwDMzU8DNzEzA
+    ZmZGwAAAQMCamTnAMzMzwM3MLMBmZibAAAAgwJqZGcAzMxPAzcwMwGZmBsAAAADAMzPzv2Zm5r+a
+    mdm/zczMvwAAwL8zM7O/Zmamv5qZmb/NzIy/AACAv2ZmZr/NzEy/MzMzv5qZGb8AAAC/zczMvpqZ
+    mb7NzEy+zczMvQAAgCfNzMw9zcxMPpqZmT7NzMw+AAAAP5qZGT8zMzM/zcxMP2ZmZj8AAIA/zcyM
+    P5qZmT9mZqY/MzOzPwAAwD/NzMw/mpnZP2Zm5j8zM/M/AAAAQGZmBkDNzAxAMzMTQJqZGUAAACBA
+    ZmYmQM3MLEAzMzNAmpk5QAAAQEBmZkZAzcxMQDMzU0CamVlAAABgQGZmZkDNzGxAMzNzQJqZeUAA
+    AIBA
+- 0
+- !!python/tuple
+  - 81
+- !!python/tuple
+  - 1
+- false
+- !!python/object/apply:collections.OrderedDict
+  - []
+dataset: DiscreteNoisyDataset
+device: cpu
+input_dim: 1
+lower_bound: -1.5
+maximum: 2
+minimum: -2
+model: BGS_MLP
+n_samples: 500
+normalize: false
+output_dim: 1
+shuffle: true
+sigma_squared: 0.5
+tau_scheduler: ConstantTauScheduler
+train_prop: 0.8
+upper_bound: 1.5
+val_prop: 0.2
+weight_init: true

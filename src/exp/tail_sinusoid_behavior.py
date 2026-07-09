@@ -1,9 +1,14 @@
 r"""
-██████  ██████  ██████  ███    ██
-     ██ ██   ██      ██ ████   ██
- █████  ██████   █████  ██ ██  ██
-██      ██   ██ ██      ██  ██ ██
-███████ ██████  ███████ ██   ████
+██████  ██████  ██████  ███    ██ 
+     ██ ██   ██      ██ ████   ██ 
+ █████  ██████   █████  ██ ██  ██ 
+██      ██   ██ ██      ██  ██ ██ 
+███████ ██████  ███████ ██   ████                                 
+"""
+
+"""
+The goal of the experiment is to compare the behavior of B2N architectures on the extremes of the input space.
+The dataset used here consists of samples from a sinusoidal function
 """
 
 from torch.optim import Optimizer, Adam, AdamW
@@ -24,6 +29,7 @@ from src.train.train import *
 
 
 if __name__ == "__main__":
+
     timestamp = datetime.datetime.now().strftime("%m%d_%H%M")
     save = True
     # Setup some parameters
@@ -39,14 +45,16 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "xpu" if torch.xpu.is_available() else device
 
-    n_epochs = 200
+    n_epochs = 100
 
-    models = ["BGA_MLP", "BGS_MLP", "G_MLP", "MLP"]
+    models = ["BGA_MLP", "BGS_MLP"]
+
+    dt_type = "SinusoidDataset"
 
     for model_name in models:
         # Move everything to config
         cfg = {"model": model_name,
-               "dataset": "BellDataset",
+               "dataset": dt_type,
                "n_samples" : n_samples,
                "input_dim" : input_dim,
                "output_dim" : output_dim,
@@ -84,7 +92,7 @@ if __name__ == "__main__":
             device=device,
         )
 
-        run_folder = f"models/tail_behavior_{timestamp}/{model_name.lower()}"
+        run_folder = f"models/tail_sinusoid_{timestamp}/{model_name.lower()}"
         if not os.path.exists(run_folder):
             os.makedirs(run_folder, exist_ok=True)
 

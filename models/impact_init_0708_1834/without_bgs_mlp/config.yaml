@@ -1,0 +1,17 @@
+batch_size: 32
+bias: true
+dataset: SinusoidDataset
+device: cpu
+input_dim: 1
+lower_bound: -1.5
+maximum: 2
+minimum: -2
+model: BGS_MLP
+n_samples: 1000
+output_dim: 1
+shuffle: true
+tau_scheduler: ConstantTauScheduler
+train_prop: 0.8
+upper_bound: 1.5
+val_prop: 0.2
+weight_init: false

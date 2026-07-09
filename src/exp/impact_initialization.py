@@ -6,6 +6,14 @@
 ███████ ██████  ███████ ██   ████
 """
 
+"""
+The goal of the experiment is to analyze the impact of starting with a variance on the weights that is wide 
+enough to allow an effective learning but small enough to avoid the spread of the prediction variance.
+
+The experiment compares the behavior of 2B2N models with and without our weight initialization.
+The dataset used is a simple sinusoidal function.
+"""
+
 from torch.optim import Optimizer, Adam, AdamW
 import argparse
 import yaml

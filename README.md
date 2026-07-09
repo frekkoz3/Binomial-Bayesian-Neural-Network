@@ -54,3 +54,33 @@ pip install -r requirements.txt
 
 The actual state of the repository does not provides a common interface to use the modules from command lines.
 If interested in using the BGS or the BGA modules you need to take them from their source code. [BGA implementation](src/net/bga_mlp.py) and [BGS implementation](src/net/bgs_mlp.py).
+```bash
+├─── docs/                    # Notes and References      
+│    └─── notes.md            # Mathematical formulation and derivations of the 2B2N model
+├─── models/                  # Trained models
+├─── plots/                   # Plots and images used in the presentation
+├─── src/                     # Source code
+│    ├─── data/               # Dataset loading and preprocessing 
+│    ├─── exp/                # Experimentation scripts. See files for details
+│    ├─── net/                # Neural network architecture and layers
+│    ├─── train/              # Training scripts
+│    ├─── val/                # Validation scripts
+│    └─── vis/                # Visualization tools
+├─── .gitignore
+├─── requirements.txt
+└─── README.md
+```
+
+## Experiments
+
+The section presents a brief description of the experiments conducted on 2B2N architecture.
+All the scripts are located in the `src/exp` folder.
+
+* `gap_behavior`: The goal of the experiment is to compare the behavior of different 2B2N architectures on a dataset with a gap in the middle of the input space.
+  The models are trained without data in the gap, but evaluated on the whole input space. The experiment is useful to understand the generalization properties of the models and the behavior of the variance out of distribution.
+* `impact_initialization`: The goal of the experiment is to analyze the impact of starting with a variance on the weights that is wide
+  enough to allow effective learning but small enough to avoid the spread of the prediction variance. The experiment compares the behavior of 2B2N models with and without our weight initialization. The dataset used is a simple sinusoidal function.
+* `learned_var`: The goal of the experiment is to spot any similarity between the intrinsic variance of the dataset and the one of the models' predictions. The dataset used is a simple sinusoidal function.
+* `quant`: The goal of the experiment is to compare the behavior of 2B2N architectures given different weights quantization techniques. The models are trained in 32-bit precision and evaluated at different bit-widths.
+* `tail_<NameDataset>_behavior`: The goal of the experiment is to compare the behavior of B2N architectures on the extremes of the input space.
+  The dataset used here consists of samples from a `<NameDataset>` function: a gaussian bell, a sigmoid and a sinusoidal function.

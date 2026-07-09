@@ -6,6 +6,11 @@ r"""
 ███████ ██████  ███████ ██   ████
 """
 
+"""
+The goal of the experiment is to compare the behavior of B2N architectures on the extremes of the input space.
+The dataset used here consists of samples from a bell function
+"""
+
 from torch.optim import Optimizer, Adam, AdamW
 import argparse
 import yaml
@@ -41,12 +46,12 @@ if __name__ == "__main__":
 
     n_epochs = 200
 
-    models = ["BGA_MLP", "BGS_MLP"]
+    models = ["BGA_MLP", "BGS_MLP", "G_MLP", "MLP"]
 
     for model_name in models:
         # Move everything to config
         cfg = {"model": model_name,
-               "dataset": "SigmoidDataset",
+               "dataset": "BellDataset",
                "n_samples" : n_samples,
                "input_dim" : input_dim,
                "output_dim" : output_dim,
@@ -84,7 +89,7 @@ if __name__ == "__main__":
             device=device,
         )
 
-        run_folder = f"models/tail_behavior_2_{timestamp}/{model_name.lower()}"
+        run_folder = f"models/tail_bell_{timestamp}/{model_name.lower()}"
         if not os.path.exists(run_folder):
             os.makedirs(run_folder, exist_ok=True)
 

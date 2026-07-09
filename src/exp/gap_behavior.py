@@ -6,6 +6,13 @@ r"""
 ███████ ██████  ███████ ██   ████                                 
 """
 
+"""
+The goal of the experiment is to compare the behavior of different 2B2N architectures on a dataset with a gap in the middle of the input space.
+The models are trained without data in the gap, but evaluated on the whole input space.
+
+The experiment is useful to understand the generalization properties of the models and the behavior of the variance out of distribution.
+"""
+
 from torch.optim import Optimizer, Adam, AdamW
 import argparse
 import yaml

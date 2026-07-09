@@ -6,6 +6,12 @@ r"""
 ███████ ██████  ███████ ██   ████
 """
 
+"""
+The goal of the experiment is to compare the behavior of 2B2N architectures given different weights quantization techniques.
+The models are trained in 32-bit precision and evaluated at different bit-widths.
+"""
+
+
 import copy
 
 import torch
