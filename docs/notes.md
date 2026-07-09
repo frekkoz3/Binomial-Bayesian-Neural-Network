@@ -23,7 +23,7 @@ Most of the details are present in referenced material.
 The core idea behind our project is to analyze the behaviour of Neural Networks in the case where weights are discrete and evenly spaced among an interval $[v_{min}, v_{max}]$.  
 This approach can be useful in cases where high precision and high throughput are coupled with memory constraints.
 
-It can also be interesting to introduce a prior distribution on the weights, so to apply the well-known Bayesian framework and to obtain a flexible architecture. 
+It can also be interesting to introduce a prior distribution on the weights, so to apply the well-known Bayesian framework and to obtain a flexible architecture.
 In our case, we choose to model each weight $w^{(i)}$ as a binomial random variable:
 
 $$
@@ -365,6 +365,35 @@ $$
 This provides the theoretical lower bound (assuming a number representation that is not loosing bit for the sign) on the precision necessary to represent the parameter without introducing an error larger than the intrinsic quantization of the transformed random variable.
 
 In this project we will evaluate this hypothesis experimentally by comparing the behavior of the quantized representation against the full-precision implementation.
+
+## Loss Function
+
+We tried multiple approaches in our implementation:
+
+* MSE
+* MSE + $\beta \mathbb{KL}$
+* GNLL
+* GNLL + $\beta \mathbb{KL}$
+
+The MSE is computed in the standard way.
+
+$$
+  \mathcal{L}(\theta) = \frac{1}{N}\sum_i^N(y_i - f(x_i, \theta))^2
+$$
+
+The KL is used as a regularizer to mantains the weights not too close to 0/1 by imposing a prior with p = 0.5. In order to compute the $\mathbb{KL}$ between two binomials we decided to leverage the fact that a binomial is just the sum of $N$ independent bernoulli with the same parameter $p$, hence:
+
+$$
+\mathbb{KL}[Bin(N, p)|Bin(N, 0.5)] = N (p \log\frac{p}{0.5} + (1 - p)\log\frac{1-p}{0.5})
+$$
+
+We used a fixed $\beta = 0.1$, but we are thinking of implementing a dynamic scheduler for it, based on the norm of the main loss.
+
+The GNLL (following the [PyTorch documentation](https://docs.pytorch.org/docs/2.13/generated/torch.nn.GaussianNLLLoss.html)) is an heterostatic extension of the MSE. We used the empirical moments of the network in order to estimate the variance.
+
+$$
+\mathbb{KL}[Bin(N, p)|Bin(N, 0.5)] = N (p \log\frac{p}{0.5} + (1 - p)\log\frac{1-p}{0.5})
+$$
 
 ## References
 

@@ -6,16 +6,51 @@ a project by Team Rocket - Bredariol, Riccio, Savorgnan
 
 ## The Idea
 
-A **Binomial Bayesian Neural Network (2B2N)** is a Bayesian Neural Network whose weights are parameterized through a remapped Binomial distribution with a fixed number of trials (N).
+A **Binomial Bayesian Neural Network (2B2N)** is a Bayesian Neural Network whose weights are parameterized through a remapped Binomial distribution with a fixed number of trials $N$.
 
-At first glance, 2B2N may appear to be a purely experimental architecture. However, the original motivation behind this project was much more practical. A Binomial distribution is completely characterized by a single parameter (p \in [0,1]) when (N) is fixed. Consequently, each weight distribution can be represented using only this parameter, potentially reducing the memory footprint of Bayesian neural networks significantly. By storing (p) in a compact numerical format, this reduction can be achieved natively rather than through post-training quantization techniques.
+2B2N born as an experimental architecture with some nice (theoretical) properties:
 
-What began as an exploration of memory-efficient Bayesian models soon evolved into a broader research interest. The simplicity of the underlying distribution raises several intriguing questions: how to perform efficient inference, how to interpret the learned uncertainty, how the expressiveness of the model compares to traditional Gaussian-based BNNs, and what advantages or limitations emerge from such a constrained probabilistic representation.
+* Natural Quantization
+* Natural Maximum Variance
+* Natural Discrete Weights
 
-The 2B2N project is therefore both an investigation into a novel Bayesian neural network architecture and an exploration of the trade-offs between representational simplicity, memory efficiency, and predictive uncertainty.
+Discussion about this can be found in [this document](docs/notes.md).
+
+We explored the architecture by changing the objective function, studying the variance at the initialization, trying different toy landscapes, evaluating the quantization capability and assessing the perfomance against other known architectures.
 
 ## Repository Structure
 
-## Formulation
+```bash
+├── docs/                     # Folder containing paper references and our documentation for the project
+├── models/                   # Folder containing trained models' weights
+├── plots/                    # Folder containing plot from experiments
+├── src/                      # Folder containing the code base
+    ├── data/                 # Dataset module
+    ├── exp/                  # Experiment scripts
+    ├── net/                  # Networks modules
+    ├── train/                # Training scripts
+    ├── val/                  # Validation scripts
+    └── vis/                  # Visualization module
+└── README.md       
+```
 
 ## Quick Setup
+
+### Windows
+
+```bash
+py -3.12 -m venv .venv
+.venv\scripts\activate
+pip install -r requirements.txt
+```
+
+### Linux
+
+```bash
+py -3.12 -m venv .venv
+source .venv\bin\activate
+pip install -r requirements.txt
+```
+
+The actual state of the repository does not provides a common interface to use the modules from command lines.
+If interested in using the BGS or the BGA modules you need to take them from their source code. [BGA implementation](src/net/bga_mlp.py) and [BGS implementation](src/net/bgs_mlp.py).
