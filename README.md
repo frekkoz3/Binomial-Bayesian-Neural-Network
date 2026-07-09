@@ -54,22 +54,6 @@ pip install -r requirements.txt
 
 The actual state of the repository does not provides a common interface to use the modules from command lines.
 If interested in using the BGS or the BGA modules you need to take them from their source code. [BGA implementation](src/net/bga_mlp.py) and [BGS implementation](src/net/bgs_mlp.py).
-```bash
-├─── docs/                    # Notes and References      
-│    └─── notes.md            # Mathematical formulation and derivations of the 2B2N model
-├─── models/                  # Trained models
-├─── plots/                   # Plots and images used in the presentation
-├─── src/                     # Source code
-│    ├─── data/               # Dataset loading and preprocessing 
-│    ├─── exp/                # Experimentation scripts. See files for details
-│    ├─── net/                # Neural network architecture and layers
-│    ├─── train/              # Training scripts
-│    ├─── val/                # Validation scripts
-│    └─── vis/                # Visualization tools
-├─── .gitignore
-├─── requirements.txt
-└─── README.md
-```
 
 ## Experiments
 
