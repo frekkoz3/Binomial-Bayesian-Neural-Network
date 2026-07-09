@@ -389,7 +389,7 @@ $$
 
 We used a fixed $\beta = 0.1$, but we are thinking of implementing a dynamic scheduler for it, based on the norm of the main loss.
 
-The GNLL (following the [PyTorch documentation](https://docs.pytorch.org/docs/2.13/generated/torch.nn.GaussianNLLLoss.html)) is an heterostatic extension of the MSE. We used the empirical moments of the network in order to estimate the variance.
+The GNLL (following the [PyTorch documentation](https://docs.pytorch.org/docs/2.13/generated/torch.nn.GaussianNLLLoss.html)) is an heterostatic extension of the MSE. We added a second head to the network to estimate the variance.
 
 $$
 \mathbb{KL}[Bin(N, p)|Bin(N, 0.5)] = N (p \log\frac{p}{0.5} + (1 - p)\log\frac{1-p}{0.5})
